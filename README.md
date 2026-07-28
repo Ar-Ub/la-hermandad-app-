@@ -87,3 +87,4 @@ src/
 supabase/
   schema.sql    tablas y reglas de seguridad para pegar en Supabase
 ```
+
