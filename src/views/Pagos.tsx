@@ -1,4 +1,6 @@
-import { pagosMock } from '../data/mockData'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { pagosMock, type Pago } from '../data/mockData'
 
 const estilosEstado: Record<string, string> = {
   pagado: 'bg-green-100 text-green-700',
@@ -11,11 +13,34 @@ function formatoRD(monto: number) {
 }
 
 export default function Pagos() {
+  const [pagos, setPagos] = useState<Pago[]>(pagosMock)
+
+  useEffect(() => {
+    if (!supabase) return
+    supabase
+      .from('pagos')
+      .select('*')
+      .order('fecha_limite', { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setPagos(
+            data.map((p: any) => ({
+              id: p.id,
+              mes: p.mes,
+              monto: p.monto,
+              estado: p.estado,
+              fecha_limite: p.fecha_limite,
+            }))
+          )
+        }
+      })
+  }, [])
+
   return (
     <div className="px-5 py-4">
       <p className="text-sm font-medium mb-2">Estado de mensualidad</p>
       <div className="flex flex-col gap-3">
-        {pagosMock.map((p) => (
+        {pagos.map((p) => (
           <div key={p.id} className="bg-gray-50 rounded-xl px-3.5 py-3">
             <p className="text-xs text-gray-500">{p.mes}</p>
             <p className="text-xl font-medium mt-0.5">{formatoRD(p.monto)}</p>
