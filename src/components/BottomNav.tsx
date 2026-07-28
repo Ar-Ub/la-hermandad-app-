@@ -1,6 +1,6 @@
-import { IconBell, IconCalendar, IconCard, IconUser } from './icons'
+import { IconBell, IconCalendar, IconCard, IconUser, IconShield } from './icons'
 
-export type Vista = 'calendario' | 'pagos' | 'avisos' | 'perfil'
+export type Vista = 'calendario' | 'pagos' | 'avisos' | 'perfil' | 'admin'
 
 const items: { id: Vista; label: string; Icon: typeof IconBell }[] = [
   { id: 'calendario', label: 'Calendario', Icon: IconCalendar },
@@ -12,12 +12,14 @@ const items: { id: Vista; label: string; Icon: typeof IconBell }[] = [
 type Props = {
   activa: Vista
   onCambiar: (v: Vista) => void
+  isAdmin?: boolean
 }
 
-export default function BottomNav({ activa, onCambiar }: Props) {
+export default function BottomNav({ activa, onCambiar, isAdmin }: Props) {
+  const lista = isAdmin ? [...items, { id: 'admin' as Vista, label: 'Admin', Icon: IconShield }] : items
   return (
     <div className="flex border-t border-gray-200 bg-white">
-      {items.map(({ id, label, Icon }) => {
+      {lista.map(({ id, label, Icon }) => {
         const on = activa === id
         return (
           <button
