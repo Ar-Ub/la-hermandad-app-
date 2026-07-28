@@ -6,6 +6,7 @@ import Calendario from './views/Calendario'
 import Pagos from './views/Pagos'
 import Avisos from './views/Avisos'
 import Perfil from './views/Perfil'
+import Admin from './views/Admin'
 import { supabase, supabaseConfigured } from './lib/supabaseClient'
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
   const [autenticado, setAutenticado] = useState(false)
   const [nombreUsuario, setNombreUsuario] = useState<string | undefined>(undefined)
   const [categoria, setCategoria] = useState('Sub-13')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -27,6 +29,18 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !autenticado) return
+
+    supabase.auth.getSession().then(({ data }) => {
+      const email = data.session?.user?.email
+      if (!email) return
+      supabase!
+        .from('administradores')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle()
+        .then(({ data: admin }) => setIsAdmin(Boolean(admin)))
+    })
+
     supabase
       .from('jugadores')
       .select('nombre, categorias(nombre)')
@@ -53,12 +67,16 @@ export default function App() {
           </>
         ) : (
           <>
-            <Header categoria={categoria} nombreUsuario={nombreUsuario ?? 'Frank'} />
+            <Header
+              categoria={vista === 'admin' ? 'Panel de administrador' : categoria}
+              nombreUsuario={vista === 'admin' ? undefined : nombreUsuario ?? 'Frank'}
+            />
             {vista === 'calendario' && <Calendario />}
             {vista === 'pagos' && <Pagos />}
             {vista === 'avisos' && <Avisos />}
             {vista === 'perfil' && <Perfil />}
-            <BottomNav activa={vista} onCambiar={setVista} />
+            {vista === 'admin' && isAdmin && <Admin />}
+            <BottomNav activa={vista} onCambiar={setVista} isAdmin={isAdmin} />
           </>
         )}
       </div>
