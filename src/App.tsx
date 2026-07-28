@@ -11,6 +11,8 @@ import { supabase, supabaseConfigured } from './lib/supabaseClient'
 export default function App() {
   const [vista, setVista] = useState<Vista>('calendario')
   const [autenticado, setAutenticado] = useState(false)
+  const [nombreUsuario, setNombreUsuario] = useState<string | undefined>(undefined)
+  const [categoria, setCategoria] = useState('Sub-13')
 
   useEffect(() => {
     if (!supabase) return
@@ -22,6 +24,22 @@ export default function App() {
     })
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!supabase || !autenticado) return
+    supabase
+      .from('jugadores')
+      .select('nombre, categorias(nombre)')
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setNombreUsuario(data.nombre?.split(' ')[0])
+          const cat = (data as any).categorias?.nombre
+          if (cat) setCategoria(cat)
+        }
+      })
+  }, [autenticado])
 
   const dentro = autenticado || !supabaseConfigured
 
@@ -35,7 +53,7 @@ export default function App() {
           </>
         ) : (
           <>
-            <Header categoria="Sub-13" nombreUsuario="Frank" />
+            <Header categoria={categoria} nombreUsuario={nombreUsuario ?? 'Frank'} />
             {vista === 'calendario' && <Calendario />}
             {vista === 'pagos' && <Pagos />}
             {vista === 'avisos' && <Avisos />}
