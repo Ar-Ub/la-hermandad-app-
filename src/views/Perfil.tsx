@@ -1,4 +1,6 @@
-import { jugadorMock } from '../data/mockData'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { jugadorMock, type Jugador } from '../data/mockData'
 
 function iniciales(nombre: string) {
   return nombre
@@ -10,7 +12,37 @@ function iniciales(nombre: string) {
 }
 
 export default function Perfil() {
-  const j = jugadorMock
+  const [jugador, setJugador] = useState<Jugador>(jugadorMock)
+
+  useEffect(() => {
+    if (!supabase) return
+    supabase
+      .from('jugadores')
+      .select('*, categorias(nombre)')
+      .limit(1)
+      .maybeSingle()
+      .then(async ({ data, error }) => {
+        if (error || !data) return
+        let alDia = true
+        const { data: pagos } = await supabase!
+          .from('pagos')
+          .select('estado, fecha_limite')
+          .order('fecha_limite', { ascending: false })
+          .limit(1)
+        if (pagos && pagos.length) alDia = pagos[0].estado === 'pagado'
+        setJugador({
+          id: data.id,
+          nombre: data.nombre,
+          categoria: (data as any).categorias?.nombre ?? '',
+          posicion: data.posicion ?? '',
+          asistencia_pct: data.asistencia_pct ?? 0,
+          partidos_jugados: data.partidos_jugados ?? 0,
+          mensualidad_al_dia: alDia,
+        })
+      })
+  }, [])
+
+  const j = jugador
   return (
     <div className="px-5 py-4">
       <p className="text-sm font-medium mb-3">Perfil del jugador</p>
