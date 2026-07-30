@@ -11,28 +11,34 @@ function tiempoRelativo(fechaIso: string) {
   return dias === 1 ? 'Ayer' : `Hace ${dias} días`
 }
 
-export default function Avisos() {
+type Props = {
+  // Categoría del jugador seleccionado. Se muestran los avisos de esa
+  // categoría más los del club entero (categoria_id null).
+  categoriaId?: string | null
+}
+
+export default function Avisos({ categoriaId }: Props) {
   const [avisos, setAvisos] = useState<Aviso[]>(avisosMock)
 
   useEffect(() => {
     if (!supabase) return
-    supabase
-      .from('avisos')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          setAvisos(
-            data.map((a: any) => ({
-              id: a.id,
-              titulo: a.titulo,
-              cuerpo: a.cuerpo,
-              fecha: tiempoRelativo(a.created_at),
-            }))
-          )
-        }
-      })
-  }, [])
+    let query = supabase.from('avisos').select('*').order('created_at', { ascending: false })
+    if (categoriaId) {
+      query = query.or(`categoria_id.eq.${categoriaId},categoria_id.is.null`)
+    }
+    query.then(({ data, error }) => {
+      if (!error && data) {
+        setAvisos(
+          data.map((a: any) => ({
+            id: a.id,
+            titulo: a.titulo,
+            cuerpo: a.cuerpo,
+            fecha: tiempoRelativo(a.created_at),
+          }))
+        )
+      }
+    })
+  }, [categoriaId])
 
   return (
     <div className="px-5 py-4">

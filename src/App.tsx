@@ -8,12 +8,11 @@ import Avisos from './views/Avisos'
 import Perfil from './views/Perfil'
 import Admin from './views/Admin'
 import { supabase, supabaseConfigured } from './lib/supabaseClient'
+import { useJugadoresFamilia } from './lib/useJugadoresFamilia'
 
 export default function App() {
   const [vista, setVista] = useState<Vista>('calendario')
   const [autenticado, setAutenticado] = useState(false)
-  const [nombreUsuario, setNombreUsuario] = useState<string | undefined>(undefined)
-  const [categoria, setCategoria] = useState('Sub-13')
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -29,7 +28,6 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !autenticado) return
-
     supabase.auth.getSession().then(({ data }) => {
       const email = data.session?.user?.email
       if (!email) return
@@ -40,22 +38,16 @@ export default function App() {
         .maybeSingle()
         .then(({ data: admin }) => setIsAdmin(Boolean(admin)))
     })
-
-    supabase
-      .from('jugadores')
-      .select('nombre, categorias(nombre)')
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setNombreUsuario(data.nombre?.split(' ')[0])
-          const cat = (data as any).categorias?.nombre
-          if (cat) setCategoria(cat)
-        }
-      })
   }, [autenticado])
 
+  // Una familia puede tener más de un hijo en el club (hermanos en
+  // categorías distintas). Este hook trae todos los jugadores ligados al
+  // correo de la sesión y deja elegir cuál ver.
+  const { jugadores, jugadorActual, jugadorId, setJugadorId } = useJugadoresFamilia(autenticado)
+
   const dentro = autenticado || !supabaseConfigured
+  const nombreUsuario = jugadorActual?.nombre.split(' ')[0]
+  const categoria = jugadorActual?.categoria || 'Sub-13'
 
   return (
     <div className="min-h-screen flex items-center justify-center py-6">
@@ -71,10 +63,29 @@ export default function App() {
               categoria={vista === 'admin' ? 'Panel de administrador' : categoria}
               nombreUsuario={vista === 'admin' ? undefined : nombreUsuario ?? 'Frank'}
             />
-            {vista === 'calendario' && <Calendario />}
-            {vista === 'pagos' && <Pagos />}
-            {vista === 'avisos' && <Avisos />}
-            {vista === 'perfil' && <Perfil />}
+
+            {vista !== 'admin' && jugadores.length > 1 && (
+              <div className="px-5 pt-3 flex gap-2 overflow-x-auto">
+                {jugadores.map((j) => (
+                  <button
+                    key={j.id}
+                    onClick={() => setJugadorId(j.id)}
+                    className={`shrink-0 text-xs px-3 py-1.5 rounded-full border ${
+                      j.id === jugadorId
+                        ? 'bg-navy text-white border-navy'
+                        : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    {j.nombre.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {vista === 'calendario' && <Calendario categoriaId={jugadorActual?.categoriaId ?? null} />}
+            {vista === 'pagos' && <Pagos jugadorId={jugadorId} />}
+            {vista === 'avisos' && <Avisos categoriaId={jugadorActual?.categoriaId ?? null} />}
+            {vista === 'perfil' && <Perfil jugadorId={jugadorId} />}
             {vista === 'admin' && isAdmin && <Admin />}
             <BottomNav activa={vista} onCambiar={setVista} isAdmin={isAdmin} />
           </>

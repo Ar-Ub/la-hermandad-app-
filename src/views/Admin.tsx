@@ -2,12 +2,46 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 type Categoria = { id: string; nombre: string }
-type JugadorSimple = { id: string; nombre: string }
+
+type JugadorDetalle = {
+  id: string
+  nombre: string
+  categoria: string
+  posicion: string
+  asistencia_pct: number
+  partidos_jugados: number
+  familia_email: string
+  estadoPago: string | null
+  mesPago: string | null
+}
+
+type ReportePago = {
+  id: string
+  mes: string
+  referencia: string | null
+  nota: string | null
+  estado: string
+  jugadores: { nombre: string } | null
+}
+
+const estilosPago: Record<string, string> = {
+  pagado: 'bg-green-100 text-green-700',
+  vence: 'bg-amber-100 text-amber-700',
+  atrasado: 'bg-red-100 text-red-700',
+}
+
+const etiquetaPago: Record<string, string> = {
+  pagado: 'Pagado',
+  vence: 'Vence',
+  atrasado: 'Atrasado',
+}
 
 export default function Admin() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [jugadores, setJugadores] = useState<JugadorSimple[]>([])
+  const [jugadoresDetalle, setJugadoresDetalle] = useState<JugadorDetalle[]>([])
+  const [reportes, setReportes] = useState<ReportePago[]>([])
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     if (!supabase) return
@@ -17,13 +51,60 @@ export default function Admin() {
       .then(({ data }) => {
         if (data) setCategorias(data)
       })
-    supabase
-      .from('jugadores')
-      .select('id, nombre')
-      .then(({ data }) => {
-        if (data) setJugadores(data)
-      })
+    cargarJugadoresDetalle()
+    cargarReportes()
   }, [])
+
+  async function cargarJugadoresDetalle() {
+    if (!supabase) return
+    const { data: jugadoresData } = await supabase
+      .from('jugadores')
+      .select('id, nombre, posicion, asistencia_pct, partidos_jugados, familia_email, categorias(nombre)')
+      .order('nombre', { ascending: true })
+
+    const { data: pagosData } = await supabase
+      .from('pagos')
+      .select('jugador_id, estado, mes, fecha_limite')
+      .order('fecha_limite', { ascending: false })
+
+    // Nos quedamos con el pago más reciente de cada jugador (el primero
+    // que aparece, ya que la lista viene ordenada por fecha descendente).
+    const ultimoPago = new Map<string, { estado: string; mes: string }>()
+    ;(pagosData ?? []).forEach((p: any) => {
+      if (!ultimoPago.has(p.jugador_id)) {
+        ultimoPago.set(p.jugador_id, { estado: p.estado, mes: p.mes })
+      }
+    })
+
+    const detalle: JugadorDetalle[] = (jugadoresData ?? []).map((j: any) => ({
+      id: j.id,
+      nombre: j.nombre,
+      categoria: j.categorias?.nombre ?? '',
+      posicion: j.posicion ?? '',
+      asistencia_pct: j.asistencia_pct ?? 0,
+      partidos_jugados: j.partidos_jugados ?? 0,
+      familia_email: j.familia_email,
+      estadoPago: ultimoPago.get(j.id)?.estado ?? null,
+      mesPago: ultimoPago.get(j.id)?.mes ?? null,
+    }))
+    setJugadoresDetalle(detalle)
+  }
+
+  async function cargarReportes() {
+    if (!supabase) return
+    const { data } = await supabase
+      .from('reportes_pago')
+      .select('id, mes, referencia, nota, estado, jugadores(nombre)')
+      .order('created_at', { ascending: false })
+    if (data) setReportes(data as any)
+  }
+
+  async function confirmarReporte(id: string) {
+    if (!supabase) return
+    const { error } = await supabase.from('reportes_pago').update({ estado: 'confirmado' }).eq('id', id)
+    avisar(error ? 'Error: ' + error.message : 'Reporte confirmado')
+    if (!error) cargarReportes()
+  }
 
   function avisar(texto: string) {
     setMensaje(texto)
@@ -46,8 +127,7 @@ export default function Admin() {
     avisar(error ? 'Error: ' + error.message : 'Jugador agregado')
     if (!error) {
       form.reset()
-      const { data } = await supabase.from('jugadores').select('id, nombre')
-      if (data) setJugadores(data)
+      cargarJugadoresDetalle()
     }
   }
 
@@ -64,7 +144,10 @@ export default function Admin() {
       fecha_limite: fd.get('fecha_limite'),
     })
     avisar(error ? 'Error: ' + error.message : 'Pago registrado')
-    if (!error) form.reset()
+    if (!error) {
+      form.reset()
+      cargarJugadoresDetalle()
+    }
   }
 
   async function publicarAviso(e: React.FormEvent<HTMLFormElement>) {
@@ -80,11 +163,81 @@ export default function Admin() {
     if (!error) form.reset()
   }
 
+  const jugadoresFiltrados = jugadoresDetalle.filter((j) =>
+    j.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  )
+
   return (
     <div className="px-5 py-4 flex flex-col gap-6 max-h-[520px] overflow-y-auto">
       {mensaje && <div className="text-xs bg-blue-50 text-blue-700 rounded-lg px-3 py-2">{mensaje}</div>}
 
-      <form onSubmit={agregarJugador} className="flex flex-col gap-2">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-medium">Jugadores del club ({jugadoresDetalle.length})</p>
+        </div>
+        <input
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar jugador..."
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs mb-2"
+        />
+        {jugadoresFiltrados.length === 0 && (
+          <p className="text-xs text-gray-400">
+            {jugadoresDetalle.length === 0 ? 'Todavía no hay jugadores registrados.' : 'Sin resultados.'}
+          </p>
+        )}
+        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
+          {jugadoresFiltrados.map((j) => (
+            <div key={j.id} className="bg-gray-50 rounded-lg px-3 py-2 text-xs flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{j.nombre}</p>
+                <p className="text-gray-500 truncate">
+                  {j.categoria || 'Sin categoría'} · {j.posicion || 'Sin posición'} · Asistencia {j.asistencia_pct}%
+                </p>
+              </div>
+              <span
+                className={`shrink-0 px-2 py-0.5 rounded-md ${
+                  j.estadoPago ? estilosPago[j.estadoPago] ?? 'bg-gray-100 text-gray-500' : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {j.estadoPago ? etiquetaPago[j.estadoPago] ?? j.estadoPago : 'Sin pagos'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-gray-100 pt-4">
+        <p className="text-sm font-medium mb-2">Reportes de pago de familias</p>
+        {reportes.length === 0 && <p className="text-xs text-gray-400">No hay reportes todavía.</p>}
+        <div className="flex flex-col gap-2">
+          {reportes.map((r) => (
+            <div key={r.id} className="bg-gray-50 rounded-lg px-3 py-2 text-xs">
+              <p className="font-medium">
+                {r.jugadores?.nombre ?? 'Jugador'} · {r.mes}
+              </p>
+              {r.referencia && <p className="text-gray-500">Ref: {r.referencia}</p>}
+              {r.nota && <p className="text-gray-500">{r.nota}</p>}
+              <div className="flex items-center justify-between mt-1.5">
+                <span
+                  className={`px-2 py-0.5 rounded-md ${
+                    r.estado === 'confirmado' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  {r.estado === 'confirmado' ? 'Confirmado' : 'Pendiente'}
+                </span>
+                {r.estado !== 'confirmado' && (
+                  <button onClick={() => confirmarReporte(r.id)} className="text-blue-600 font-medium">
+                    Confirmar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <form onSubmit={agregarJugador} className="flex flex-col gap-2 border-t border-gray-100 pt-4">
         <p className="text-sm font-medium">Agregar jugador</p>
         <input
           name="nombre"
@@ -115,7 +268,7 @@ export default function Admin() {
         <p className="text-sm font-medium">Registrar pago</p>
         <select name="jugador_id" required className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
           <option value="">Jugador...</option>
-          {jugadores.map((j) => (
+          {jugadoresDetalle.map((j) => (
             <option key={j.id} value={j.id}>
               {j.nombre}
             </option>

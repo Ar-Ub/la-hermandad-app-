@@ -12,29 +12,66 @@ function formatoRD(monto: number) {
   return 'RD$' + monto.toLocaleString('es-DO')
 }
 
-export default function Pagos() {
+type Props = {
+  jugadorId?: string | null
+}
+
+export default function Pagos({ jugadorId }: Props) {
   const [pagos, setPagos] = useState<Pago[]>(pagosMock)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [mensaje, setMensaje] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supabase) return
-    supabase
-      .from('pagos')
-      .select('*')
-      .order('fecha_limite', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          setPagos(
-            data.map((p: any) => ({
-              id: p.id,
-              mes: p.mes,
-              monto: p.monto,
-              estado: p.estado,
-              fecha_limite: p.fecha_limite,
-            }))
-          )
-        }
-      })
-  }, [])
+    let query = supabase.from('pagos').select('*').order('fecha_limite', { ascending: true })
+    if (jugadorId) query = query.eq('jugador_id', jugadorId)
+    query.then(({ data, error }) => {
+      if (!error && data) {
+        setPagos(
+          data.map((p: any) => ({
+            id: p.id,
+            mes: p.mes,
+            monto: p.monto,
+            estado: p.estado,
+            fecha_limite: p.fecha_limite,
+          }))
+        )
+      }
+    })
+  }, [jugadorId])
+
+  async function enviarReporte(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = e.currentTarget
+
+    // Modo de muestra (sin Supabase configurado o sin jugador real): no
+    // hay nada que guardar, solo mostramos cómo se sentiría.
+    if (!supabase || !jugadorId) {
+      setMensaje('Modo de muestra: esto todavía no se guarda. Conecta Supabase para que funcione de verdad.')
+      setMostrarForm(false)
+      setTimeout(() => setMensaje(null), 5000)
+      return
+    }
+
+    setEnviando(true)
+    const fd = new FormData(form)
+    const { error } = await supabase.from('reportes_pago').insert({
+      jugador_id: jugadorId,
+      mes: fd.get('mes'),
+      referencia: fd.get('referencia'),
+      nota: fd.get('nota'),
+    })
+    setEnviando(false)
+    if (!error) {
+      setMensaje('Reporte enviado. El club lo va a confirmar pronto.')
+      setMostrarForm(false)
+      form.reset()
+    } else {
+      setMensaje('Error al enviar: ' + error.message)
+    }
+    setTimeout(() => setMensaje(null), 5000)
+  }
 
   return (
     <div className="px-5 py-4">
@@ -52,9 +89,53 @@ export default function Pagos() {
           </div>
         ))}
       </div>
-      <button className="w-full mt-4 bg-navy text-white text-sm rounded-lg py-2.5">
-        Reportar pago
-      </button>
+
+      {mensaje && <p className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mt-3">{mensaje}</p>}
+
+      {!mostrarForm ? (
+        <button
+          onClick={() => setMostrarForm(true)}
+          className="w-full mt-4 bg-navy text-white text-sm rounded-lg py-2.5"
+        >
+          Reportar pago
+        </button>
+      ) : (
+        <form onSubmit={enviarReporte} className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4">
+          <p className="text-sm font-medium">Reportar pago</p>
+          <input
+            name="mes"
+            required
+            placeholder="Mes que pagaste (ej. Agosto 2026)"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            name="referencia"
+            placeholder="Número de referencia o transferencia"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <textarea
+            name="nota"
+            placeholder="Nota (opcional)"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[60px]"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMostrarForm(false)}
+              className="flex-1 border border-gray-300 text-gray-600 text-sm rounded-lg py-2"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={enviando}
+              className="flex-1 bg-navy text-white text-sm rounded-lg py-2 disabled:opacity-50"
+            >
+              {enviando ? 'Enviando...' : 'Enviar'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

@@ -16,30 +16,36 @@ const etiquetaEstado: Record<string, string> = {
 
 const meses = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 
-export default function Calendario() {
+type Props = {
+  // Categoría del jugador seleccionado. Se muestran los eventos de esa
+  // categoría más los del club entero (categoria_id null).
+  categoriaId?: string | null
+}
+
+export default function Calendario({ categoriaId }: Props) {
   const [eventos, setEventos] = useState<Evento[]>(eventosMock)
 
   useEffect(() => {
     if (!supabase) return
-    supabase
-      .from('eventos')
-      .select('*')
-      .order('fecha', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          setEventos(
-            data.map((ev: any) => ({
-              id: ev.id,
-              titulo: ev.titulo,
-              fecha: ev.fecha,
-              hora: ev.hora ?? '',
-              lugar: ev.lugar ?? '',
-              estado: ev.estado ?? 'pendiente',
-            }))
-          )
-        }
-      })
-  }, [])
+    let query = supabase.from('eventos').select('*').order('fecha', { ascending: true })
+    if (categoriaId) {
+      query = query.or(`categoria_id.eq.${categoriaId},categoria_id.is.null`)
+    }
+    query.then(({ data, error }) => {
+      if (!error && data) {
+        setEventos(
+          data.map((ev: any) => ({
+            id: ev.id,
+            titulo: ev.titulo,
+            fecha: ev.fecha,
+            hora: ev.hora ?? '',
+            lugar: ev.lugar ?? '',
+            estado: ev.estado ?? 'pendiente',
+          }))
+        )
+      }
+    })
+  }, [categoriaId])
 
   return (
     <div className="px-5 py-4">

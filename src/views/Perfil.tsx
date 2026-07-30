@@ -11,15 +11,19 @@ function iniciales(nombre: string) {
     .toUpperCase()
 }
 
-export default function Perfil() {
+type Props = {
+  jugadorId?: string | null
+}
+
+export default function Perfil({ jugadorId }: Props) {
   const [jugador, setJugador] = useState<Jugador>(jugadorMock)
 
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase || !jugadorId) return
     supabase
       .from('jugadores')
       .select('*, categorias(nombre)')
-      .limit(1)
+      .eq('id', jugadorId)
       .maybeSingle()
       .then(async ({ data, error }) => {
         if (error || !data) return
@@ -27,6 +31,7 @@ export default function Perfil() {
         const { data: pagos } = await supabase!
           .from('pagos')
           .select('estado, fecha_limite')
+          .eq('jugador_id', jugadorId)
           .order('fecha_limite', { ascending: false })
           .limit(1)
         if (pagos && pagos.length) alDia = pagos[0].estado === 'pagado'
@@ -40,7 +45,7 @@ export default function Perfil() {
           mensualidad_al_dia: alDia,
         })
       })
-  }, [])
+  }, [jugadorId])
 
   const j = jugador
   return (
