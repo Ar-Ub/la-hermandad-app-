@@ -5,9 +5,6 @@ type Props = {
   onDemoLogin: () => void
 }
 
-// Login sin contraseña (magic link): la familia recibe un correo con un
-// enlace y entra directo. No hay contraseñas que la gente olvide, y no
-// hay que construir pantalla de "recuperar contraseña".
 export default function Login({ onDemoLogin }: Props) {
   const [email, setEmail] = useState('')
   const [enviado, setEnviado] = useState(false)
@@ -24,9 +21,7 @@ export default function Login({ onDemoLogin }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[420px] px-6 text-center gap-4">
-      <div className="w-14 h-14 rounded-full bg-navy text-white flex items-center justify-center text-lg font-medium">
-        LH
-      </div>
+      <img src="/logo.png" alt="La Hermandad F.C." className="w-16 h-16 rounded-full bg-white object-cover" />
       <div>
         <p className="text-base font-medium">La Hermandad F.C.</p>
         <p className="text-sm text-gray-500">Portal de familias y jugadores</p>

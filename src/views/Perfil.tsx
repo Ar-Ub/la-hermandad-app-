@@ -1,48 +1,100 @@
-import { jugadorMock } from '../data/mockData'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { jugadorMock, partidosMock, partidoJugadoresMock, asistenciasMock, type Jugador } from '../data/mockData'
+import { resumenDeJugador, type Partido, type PartidoJugador, type EntrenamientoAsistencia } from '../lib/estadisticas'
+import FichaJugador from '../components/FichaJugador'
 
-function iniciales(nombre: string) {
-  return nombre
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
+type Props = {
+  jugadorId?: string | null
 }
 
-export default function Perfil() {
-  const j = jugadorMock
+export default function Perfil({ jugadorId }: Props) {
+  const [jugador, setJugador] = useState<Jugador>(jugadorMock)
+  const [partidos, setPartidos] = useState<Partido[]>(partidosMock)
+  const [partidoJugadores, setPartidoJugadores] = useState<PartidoJugador[]>(partidoJugadoresMock)
+  const [asistencias, setAsistencias] = useState<EntrenamientoAsistencia[]>(asistenciasMock)
+
+  useEffect(() => {
+    if (!supabase || !jugadorId) return
+
+    supabase
+      .from('jugadores')
+      .select('*, categorias(nombre)')
+      .eq('id', jugadorId)
+      .maybeSingle()
+      .then(async ({ data, error }) => {
+        if (error || !data) return
+        let alDia = true
+        const { data: pagos } = await supabase!
+          .from('pagos')
+          .select('estado, fecha_limite')
+          .eq('jugador_id', jugadorId)
+          .order('fecha_limite', { ascending: false })
+          .limit(1)
+        if (pagos && pagos.length) alDia = pagos[0].estado === 'pagado'
+        setJugador({
+          id: data.id,
+          nombre: data.nombre,
+          categoria: (data as any).categorias?.nombre ?? '',
+          posicion: data.posicion ?? '',
+          fecha_nacimiento: data.fecha_nacimiento ?? null,
+          foto_url: data.foto_url ?? null,
+          asistencia_pct: data.asistencia_pct ?? 0,
+          partidos_jugados: data.partidos_jugados ?? 0,
+          mensualidad_al_dia: alDia,
+        })
+      })
+
+    supabase
+      .from('partido_jugadores')
+      .select('id, partido_id, jugador_id, goles, asistencias, actuacion, partidos(id, categoria_id, fecha, rival, fase, goles_favor, goles_contra)')
+      .eq('jugador_id', jugadorId)
+      .then(({ data }) => {
+        if (!data) return
+        const partidosDelJugador: Partido[] = data.map((pj: any) => pj.partidos).filter(Boolean)
+        const partidoJugadoresDelJugador: PartidoJugador[] = data.map((pj: any) => ({
+          id: pj.id,
+          partido_id: pj.partido_id,
+          jugador_id: pj.jugador_id,
+          goles: pj.goles,
+          asistencias: pj.asistencias,
+          actuacion: pj.actuacion,
+        }))
+        setPartidos(partidosDelJugador)
+        setPartidoJugadores(partidoJugadoresDelJugador)
+      })
+
+    supabase
+      .from('entrenamiento_asistencias')
+      .select('id, entrenamiento_id, jugador_id, asistio')
+      .eq('jugador_id', jugadorId)
+      .then(({ data }) => {
+        if (data) setAsistencias(data as EntrenamientoAsistencia[])
+      })
+  }, [jugadorId])
+
+  const resumen = resumenDeJugador(jugador.id, partidos, partidoJugadores, [], asistencias)
+
   return (
-    <div className="px-5 py-4">
-      <p className="text-sm font-medium mb-3">Perfil del jugador</p>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-medium shrink-0">
-          {iniciales(j.nombre)}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{j.nombre}</p>
-          <p className="text-xs text-gray-500 truncate">
-            {j.categoria} · {j.posicion}
-          </p>
+    <div>
+      <div className="px-5 pt-4">
+        <div
+          className={`text-xs rounded-lg px-3 py-2 flex items-center justify-between ${
+            jugador.mensualidad_al_dia ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}
+        >
+          <span>Mensualidad</span>
+          <span className="font-medium">{jugador.mensualidad_al_dia ? 'Al día' : 'Pendiente'}</span>
         </div>
       </div>
-      <table className="w-full text-[13px]">
-        <tbody>
-          <tr>
-            <td className="text-gray-500 py-1.5">Asistencia</td>
-            <td className="text-right font-medium py-1.5">{j.asistencia_pct}%</td>
-          </tr>
-          <tr className="border-t border-gray-100">
-            <td className="text-gray-500 py-1.5">Partidos jugados</td>
-            <td className="text-right font-medium py-1.5">{j.partidos_jugados}</td>
-          </tr>
-          <tr className="border-t border-gray-100">
-            <td className="text-gray-500 py-1.5">Estado mensualidad</td>
-            <td className={`text-right font-medium py-1.5 ${j.mensualidad_al_dia ? 'text-green-600' : 'text-red-600'}`}>
-              {j.mensualidad_al_dia ? 'Al día' : 'Pendiente'}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <FichaJugador
+        nombre={jugador.nombre}
+        categoria={jugador.categoria}
+        posicion={jugador.posicion}
+        fechaNacimiento={jugador.fecha_nacimiento}
+        fotoUrl={jugador.foto_url}
+        resumen={resumen}
+      />
     </div>
   )
 }
