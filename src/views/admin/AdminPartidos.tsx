@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { FASES, type Partido, type PartidoJugador } from '../../lib/estadisticas'
+import { sincronizarFila, eliminarFilaSheets } from '../../lib/sheetsSync'
 
 type Categoria = { id: string; nombre: string }
 type JugadorBasico = { id: string; nombre: string; categoria_id: string | null }
@@ -22,16 +23,21 @@ export default function AdminPartidos({ categorias, jugadores, partidos, partido
     if (!supabase) return
     const form = e.currentTarget
     const fd = new FormData(form)
-    const { error } = await supabase.from('partidos').insert({
-      categoria_id: fd.get('categoria_id'),
-      fecha: fd.get('fecha'),
-      rival: fd.get('rival'),
-      fase: fd.get('fase'),
-      goles_favor: Number(fd.get('goles_favor')),
-      goles_contra: Number(fd.get('goles_contra')),
-    })
+    const { data, error } = await supabase
+      .from('partidos')
+      .insert({
+        categoria_id: fd.get('categoria_id'),
+        fecha: fd.get('fecha'),
+        rival: fd.get('rival'),
+        fase: fd.get('fase'),
+        goles_favor: Number(fd.get('goles_favor')),
+        goles_contra: Number(fd.get('goles_contra')),
+      })
+      .select()
+      .single()
     avisar(error ? 'Error: ' + error.message : 'Partido registrado')
     if (!error) {
+      if (data) sincronizarFila('partidos', data)
       form.reset()
       onRecargar()
     }
@@ -42,6 +48,7 @@ export default function AdminPartidos({ categorias, jugadores, partidos, partido
     const { error } = await supabase.from('partidos').delete().eq('id', id)
     avisar(error ? 'Error: ' + error.message : 'Partido eliminado')
     if (!error) {
+      eliminarFilaSheets('partidos', id)
       if (partidoSeleccionado === id) setPartidoSeleccionado(null)
       onRecargar()
     }
@@ -52,15 +59,20 @@ export default function AdminPartidos({ categorias, jugadores, partidos, partido
     if (!supabase || !partidoSeleccionado) return
     const form = e.currentTarget
     const fd = new FormData(form)
-    const { error } = await supabase.from('partido_jugadores').insert({
-      partido_id: partidoSeleccionado,
-      jugador_id: fd.get('jugador_id'),
-      goles: Number(fd.get('goles') || 0),
-      asistencias: Number(fd.get('asistencias') || 0),
-      actuacion: fd.get('actuacion') ? Number(fd.get('actuacion')) : null,
-    })
+    const { data, error } = await supabase
+      .from('partido_jugadores')
+      .insert({
+        partido_id: partidoSeleccionado,
+        jugador_id: fd.get('jugador_id'),
+        goles: Number(fd.get('goles') || 0),
+        asistencias: Number(fd.get('asistencias') || 0),
+        actuacion: fd.get('actuacion') ? Number(fd.get('actuacion')) : null,
+      })
+      .select()
+      .single()
     avisar(error ? 'Error: ' + error.message : 'Convocado agregado')
     if (!error) {
+      if (data) sincronizarFila('partido_jugadores', data)
       form.reset()
       onRecargar()
     }
@@ -69,8 +81,10 @@ export default function AdminPartidos({ categorias, jugadores, partidos, partido
   async function quitarConvocado(id: string) {
     if (!supabase) return
     const { error } = await supabase.from('partido_jugadores').delete().eq('id', id)
-    if (!error) onRecargar()
-    else avisar('Error: ' + error.message)
+    if (!error) {
+      eliminarFilaSheets('partido_jugadores', id)
+      onRecargar()
+    } else avisar('Error: ' + error.message)
   }
 
   const partido = partidos.find((p) => p.id === partidoSeleccionado) ?? null

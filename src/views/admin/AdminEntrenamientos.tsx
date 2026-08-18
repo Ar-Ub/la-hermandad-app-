@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import type { Entrenamiento, EntrenamientoAsistencia } from '../../lib/estadisticas'
+import { sincronizarFila, eliminarFilaSheets } from '../../lib/sheetsSync'
 
 type Categoria = { id: string; nombre: string }
 type JugadorBasico = { id: string; nombre: string; categoria_id: string | null }
@@ -57,6 +58,7 @@ export default function AdminEntrenamientos({
       .single()
     avisar(error ? 'Error: ' + error.message : 'Sesión creada, marca la asistencia abajo')
     if (!error && data) {
+      sincronizarFila('entrenamientos', data)
       form.reset()
       onRecargar()
       setSeleccionado(data.id)
@@ -68,6 +70,7 @@ export default function AdminEntrenamientos({
     const { error } = await supabase.from('entrenamientos').delete().eq('id', id)
     avisar(error ? 'Error: ' + error.message : 'Sesión eliminada')
     if (!error) {
+      eliminarFilaSheets('entrenamientos', id)
       if (seleccionado === id) setSeleccionado(null)
       onRecargar()
     }
@@ -82,10 +85,24 @@ export default function AdminEntrenamientos({
       jugador_id: j.id,
       asistio: Boolean(marcados[j.id]),
     }))
-    const { error } = filas.length ? await supabase.from('entrenamiento_asistencias').insert(filas) : { error: null }
+    const { data, error } = filas.length
+      ? await supabase.from('entrenamiento_asistencias').insert(filas).select()
+      : { data: [], error: null }
     setGuardando(false)
     avisar(error ? 'Error: ' + error.message : 'Asistencia guardada')
-    if (!error) onRecargar()
+    if (!error) {
+      // La asistencia de esta sesión se borra y se vuelve a insertar cada
+      // vez que se guarda (con ids nuevos en Supabase). Para que la fila en
+      // Sheets no se duplique en cada resave, se manda con un id fijo por
+      // combinación entrenamiento+jugador en vez del id real de la fila.
+      ;(data ?? []).forEach((fila: any) => {
+        sincronizarFila('entrenamiento_asistencias', {
+          ...fila,
+          id: fila.entrenamiento_id + '_' + fila.jugador_id,
+        })
+      })
+      onRecargar()
+    }
   }
 
   return (

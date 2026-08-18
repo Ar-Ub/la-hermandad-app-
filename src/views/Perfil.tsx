@@ -73,7 +73,7 @@ export default function Perfil({ jugadorId }: Props) {
       })
   }, [jugadorId])
 
-  const resumen = resumenDeJugador(jugador.id, partidos, partidoJugadores, [], asistencias)
+  const resumen = resumenDeJugador(jugador.id, partidos, partidoJugadores, asistencias)
 
   return (
     <div>

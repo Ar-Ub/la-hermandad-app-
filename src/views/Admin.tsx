@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { resumenDeJugador, type Partido, type PartidoJugador, type Entrenamiento, type EntrenamientoAsistencia } from '../lib/estadisticas'
+import type { ReglaEjercicio, BancoEjercicio, Sesion, SesionTarea } from '../lib/planificacion'
+import { sincronizarFila, reemplazarTablaCompleta } from '../lib/sheetsSync'
 import FichaJugador from '../components/FichaJugador'
 import AdminPartidos from './admin/AdminPartidos'
 import AdminEntrenamientos from './admin/AdminEntrenamientos'
 import AdminEstadisticas from './admin/AdminEstadisticas'
+import AdminReglas from './admin/AdminReglas'
+import AdminBancoEjercicios from './admin/AdminBancoEjercicios'
+import AdminPlanificacion from './admin/AdminPlanificacion'
+import AdminResumenes from './admin/AdminResumenes'
 
 type Categoria = { id: string; nombre: string }
 
@@ -32,7 +38,7 @@ type ReportePago = {
   jugadores: { nombre: string } | null
 }
 
-type Seccion = 'general' | 'partidos' | 'entrenamientos' | 'estadisticas'
+type Seccion = 'general' | 'partidos' | 'entrenamientos' | 'estadisticas' | 'reglas' | 'banco' | 'planificacion' | 'resumenes'
 
 const estilosPago: Record<string, string> = {
   pagado: 'bg-green-100 text-green-700',
@@ -51,6 +57,10 @@ const secciones: { id: Seccion; label: string }[] = [
   { id: 'partidos', label: 'Partidos' },
   { id: 'entrenamientos', label: 'Entrenos' },
   { id: 'estadisticas', label: 'Stats' },
+  { id: 'reglas', label: 'Reglas' },
+  { id: 'banco', label: 'Banco' },
+  { id: 'planificacion', label: 'Planificación' },
+  { id: 'resumenes', label: 'Resúmenes' },
 ]
 
 export default function Admin() {
@@ -67,6 +77,11 @@ export default function Admin() {
   const [entrenamientos, setEntrenamientos] = useState<Entrenamiento[]>([])
   const [asistencias, setAsistencias] = useState<EntrenamientoAsistencia[]>([])
 
+  const [reglas, setReglas] = useState<ReglaEjercicio[]>([])
+  const [bancoEjercicios, setBancoEjercicios] = useState<BancoEjercicio[]>([])
+  const [sesiones, setSesiones] = useState<Sesion[]>([])
+  const [sesionTareas, setSesionTareas] = useState<SesionTarea[]>([])
+
   useEffect(() => {
     if (!supabase) return
     supabase
@@ -78,7 +93,40 @@ export default function Admin() {
     cargarJugadoresDetalle()
     cargarReportes()
     cargarEstadisticas()
+    cargarPlanificacion()
   }, [])
+
+  // Cada vez que cambian los datos base de jugadores/partidos/asistencias,
+  // reconstruye la pestaña "Ficha_Jugadores" completa en Sheets: una fila
+  // por jugador con su record entero, para poder buscarlo ahí directo.
+  useEffect(() => {
+    if (jugadoresDetalle.length === 0) return
+    const filas = jugadoresDetalle.map((j) => {
+      const resumen = resumenDeJugador(
+        j.id,
+        partidos,
+        partidoJugadores,
+        asistencias
+      )
+      return {
+        id: j.id,
+        nombre: j.nombre,
+        categoria: j.categoria,
+        posicion: j.posicion,
+        fecha_nacimiento: j.fecha_nacimiento ?? '',
+        familia_email: j.familia_email,
+        mensualidad_estado: j.estadoPago ?? 'sin pagos',
+        mensualidad_mes: j.mesPago ?? '',
+        partidos_jugados: resumen.partidosJugados,
+        goles: resumen.goles,
+        asistencias_gol: resumen.asistencias,
+        promedio_actuacion: resumen.promedioActuacion ?? '',
+        asistencia_entrenos_pct: j.asistencia_pct,
+      }
+    })
+    reemplazarTablaCompleta('Ficha_Jugadores', filas)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jugadoresDetalle, partidos, partidoJugadores, asistencias])
 
   async function cargarJugadoresDetalle() {
     if (!supabase) return
@@ -143,11 +191,33 @@ export default function Admin() {
     if (a) setAsistencias(a as EntrenamientoAsistencia[])
   }
 
+  async function cargarPlanificacion() {
+    if (!supabase) return
+    const [{ data: r }, { data: b }, { data: s }, { data: st }] = await Promise.all([
+      supabase.from('reglas_ejercicios').select('*'),
+      supabase.from('banco_ejercicios').select('*').order('nombre', { ascending: true }),
+      supabase.from('sesiones').select('*').order('fecha', { ascending: false }),
+      supabase.from('sesion_tareas').select('*'),
+    ])
+    if (r) setReglas(r as ReglaEjercicio[])
+    if (b) setBancoEjercicios(b as BancoEjercicio[])
+    if (s) setSesiones(s as Sesion[])
+    if (st) setSesionTareas(st as SesionTarea[])
+  }
+
   async function confirmarReporte(id: string) {
     if (!supabase) return
-    const { error } = await supabase.from('reportes_pago').update({ estado: 'confirmado' }).eq('id', id)
+    const { data, error } = await supabase
+      .from('reportes_pago')
+      .update({ estado: 'confirmado' })
+      .eq('id', id)
+      .select()
+      .single()
     avisar(error ? 'Error: ' + error.message : 'Reporte confirmado')
-    if (!error) cargarReportes()
+    if (!error) {
+      if (data) sincronizarFila('reportes_pago', data)
+      cargarReportes()
+    }
   }
 
   function avisar(texto: string) {
@@ -160,18 +230,23 @@ export default function Admin() {
     if (!supabase) return
     const form = e.currentTarget
     const fd = new FormData(form)
-    const { error } = await supabase.from('jugadores').insert({
-      nombre: fd.get('nombre'),
-      posicion: fd.get('posicion'),
-      categoria_id: fd.get('categoria_id'),
-      familia_email: fd.get('familia_email'),
-      fecha_nacimiento: fd.get('fecha_nacimiento') || null,
-      foto_url: fd.get('foto_url') || null,
-      asistencia_pct: 0,
-      partidos_jugados: 0,
-    })
+    const { data, error } = await supabase
+      .from('jugadores')
+      .insert({
+        nombre: fd.get('nombre'),
+        posicion: fd.get('posicion'),
+        categoria_id: fd.get('categoria_id'),
+        familia_email: fd.get('familia_email'),
+        fecha_nacimiento: fd.get('fecha_nacimiento') || null,
+        foto_url: fd.get('foto_url') || null,
+        asistencia_pct: 0,
+        partidos_jugados: 0,
+      })
+      .select()
+      .single()
     avisar(error ? 'Error: ' + error.message : 'Jugador agregado')
     if (!error) {
+      if (data) sincronizarFila('jugadores', data)
       form.reset()
       cargarJugadoresDetalle()
     }
@@ -182,15 +257,20 @@ export default function Admin() {
     if (!supabase) return
     const form = e.currentTarget
     const fd = new FormData(form)
-    const { error } = await supabase.from('pagos').insert({
-      jugador_id: fd.get('jugador_id'),
-      mes: fd.get('mes'),
-      monto: Number(fd.get('monto')),
-      estado: fd.get('estado'),
-      fecha_limite: fd.get('fecha_limite'),
-    })
+    const { data, error } = await supabase
+      .from('pagos')
+      .insert({
+        jugador_id: fd.get('jugador_id'),
+        mes: fd.get('mes'),
+        monto: Number(fd.get('monto')),
+        estado: fd.get('estado'),
+        fecha_limite: fd.get('fecha_limite'),
+      })
+      .select()
+      .single()
     avisar(error ? 'Error: ' + error.message : 'Pago registrado')
     if (!error) {
+      if (data) sincronizarFila('pagos', data)
       form.reset()
       cargarJugadoresDetalle()
     }
@@ -201,12 +281,19 @@ export default function Admin() {
     if (!supabase) return
     const form = e.currentTarget
     const fd = new FormData(form)
-    const { error } = await supabase.from('avisos').insert({
-      titulo: fd.get('titulo'),
-      cuerpo: fd.get('cuerpo'),
-    })
+    const { data, error } = await supabase
+      .from('avisos')
+      .insert({
+        titulo: fd.get('titulo'),
+        cuerpo: fd.get('cuerpo'),
+      })
+      .select()
+      .single()
     avisar(error ? 'Error: ' + error.message : 'Aviso publicado')
-    if (!error) form.reset()
+    if (!error) {
+      if (data) sincronizarFila('avisos', data)
+      form.reset()
+    }
   }
 
   const jugadoresFiltrados = jugadoresDetalle.filter((j) =>
@@ -282,7 +369,7 @@ export default function Admin() {
                           posicion={j.posicion}
                           fechaNacimiento={j.fecha_nacimiento}
                           fotoUrl={j.foto_url}
-                          resumen={resumenDeJugador(j.id, partidos, partidoJugadores, entrenamientos, asistencias)}
+                          resumen={resumenDeJugador(j.id, partidos, partidoJugadores, asistencias)}
                         />
                       </div>
                     )}
@@ -430,6 +517,28 @@ export default function Admin() {
 
         {seccion === 'estadisticas' && (
           <AdminEstadisticas categorias={categorias} partidos={partidos} entrenamientos={entrenamientos} asistencias={asistencias} />
+        )}
+
+        {seccion === 'reglas' && <AdminReglas reglas={reglas} onRecargar={cargarPlanificacion} avisar={avisar} />}
+
+        {seccion === 'banco' && (
+          <AdminBancoEjercicios ejercicios={bancoEjercicios} reglas={reglas} onRecargar={cargarPlanificacion} avisar={avisar} />
+        )}
+
+        {seccion === 'planificacion' && (
+          <AdminPlanificacion
+            categorias={categorias}
+            ejercicios={bancoEjercicios}
+            reglas={reglas}
+            sesiones={sesiones}
+            sesionTareas={sesionTareas}
+            onRecargar={cargarPlanificacion}
+            avisar={avisar}
+          />
+        )}
+
+        {seccion === 'resumenes' && (
+          <AdminResumenes categorias={categorias} ejercicios={bancoEjercicios} sesiones={sesiones} sesionTareas={sesionTareas} />
         )}
       </div>
     </div>

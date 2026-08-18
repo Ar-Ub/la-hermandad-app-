@@ -67,8 +67,13 @@ su lugar, corre en orden:
    entrenamientos y la ficha del jugador (reemplaza la hoja de cálculo de
    estadísticas). Si ya corriste el primero antes, con correr solo este
    basta.
+3. `supabase/migracion_planificacion.sql` — agrega Reglas de Ejercicios,
+   Banco de Ejercicios, Planificación de sesiones y Resúmenes (reemplaza
+   la hoja de cálculo de planificación de entrenamientos). Si ya la
+   corriste antes de que existiera el vínculo con TacticaFC, córrela de
+   nuevo: solo agrega la columna que falta, no duplica nada.
 
-Ninguno de los dos toca ni borra nada de lo que ya tienes cargado.
+Ninguno de los tres toca ni borra nada de lo que ya tienes cargado.
 
 ### Estadísticas (partidos, entrenamientos, ficha del jugador)
 
@@ -95,7 +100,53 @@ en cualquier hoja de cálculo (pegando el enlace compartido en A1) ▸ pega
 ese resultado en el campo "Foto" al agregar el jugador desde Admin. Usa
 fotos recortadas cuadradas (1:1).
 
-## 3. Publicar la app (gratis)
+### Planificación de sesiones y TacticaFC
+
+Desde **Admin > Reglas** defines los rangos válidos por tipo de tarea y
+componente físico. Desde **Admin > Banco** creas ejercicios: si vinculas
+uno con un ejercicio de **TacticaFC**, el diagrama se muestra en vivo
+(si lo corriges allá, se actualiza aquí solo — no son dos copias
+separadas). Desde **Admin > Planificación** armas sesiones de hasta 3
+tareas y ves la plantilla imprimible. **Admin > Resúmenes** tiene el
+resumen mensual (con meta) y por ciclo.
+
+La conexión con TacticaFC es de solo lectura: La Hermandad nunca escribe
+en la base de datos de TacticaFC, solo lee los ejercicios del coach a
+través de una vista pública (`exercises_publicas`) que ya está creada en
+ese proyecto. Si TacticaFC corre solo en tu computadora (`localhost`)
+sigue funcionando igual: en cuanto guardes un ejercicio ahí, aparece acá
+— no hace falta que esté publicada en internet para que la conexión
+funcione, solo que ambas usen la misma base de datos en la nube.
+
+## 3. Respaldo automático en Google Sheets (gratis)
+
+Todo lo que se guarda en la app (jugadores, pagos, avisos, partidos,
+entrenamientos, planificación) se manda también a un Google Sheet de tu
+elección, como respaldo y para poder buscar un jugador y ver su record
+completo en la pestaña **Ficha_Jugadores**.
+
+1. Crea un Google Sheet nuevo y vacío.
+2. Extensiones > Apps Script, borra el contenido por defecto y pega todo
+   el archivo `sheets/Code.gs` de este proyecto.
+3. Ícono de engranaje (Project Settings) > Script Properties > Add script
+   property: nombre `TOKEN`, valor cualquier clave larga inventada por ti
+   (es la que evita que alguien más le escriba a tu Sheet).
+4. Deploy > New deployment > tipo "Web app" > Execute as: **Me** > Who
+   has access: **Anyone**. Copia la URL que termina en `/exec`.
+5. Agrega esa URL y el TOKEN del paso 3 a tu `.env`:
+
+```
+VITE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/.../exec
+VITE_SHEETS_WEBHOOK_TOKEN=la-clave-que-inventaste
+```
+
+6. Agrega las mismas dos variables donde publicaste la app (Cloudflare
+   Pages > Settings > Environment variables) y vuelve a desplegar.
+
+Sin estos dos valores la app funciona exactamente igual, solo que sin
+mandar copia a Sheets.
+
+## 4. Publicar la app (gratis)
 
 Recomendado: **Cloudflare Pages**, no Vercel — el plan gratis de Vercel
 prohíbe uso comercial, y esta app cobra mensualidad a las familias.
@@ -106,9 +157,10 @@ prohíbe uso comercial, y esta app cobra mensualidad a las familias.
 3. Configuración de build:
    - Comando de build: `npm run build`
    - Carpeta de salida: `dist`
-4. Agrega las mismas dos variables de entorno (`VITE_SUPABASE_URL`,
-   `VITE_SUPABASE_ANON_KEY`) en Cloudflare Pages > Settings >
-   Environment variables.
+4. Agrega las variables de entorno (`VITE_SUPABASE_URL`,
+   `VITE_SUPABASE_ANON_KEY` y, si usas el respaldo en Sheets,
+   `VITE_SHEETS_WEBHOOK_URL` y `VITE_SHEETS_WEBHOOK_TOKEN`) en Cloudflare
+   Pages > Settings > Environment variables.
 5. Cada vez que subas un cambio a GitHub, Cloudflare vuelve a publicar
    la app automáticamente.
 
@@ -116,7 +168,7 @@ Costo total en esta fase: **US$0**, excepto el dominio propio si quieren
 uno (ej. lahermandadfc.com, ~US$12-15/año) en vez del subdominio gratis
 que da Cloudflare Pages.
 
-## 4. Qué sigue (fases futuras)
+## 5. Qué sigue (fases futuras)
 
 - ~~Fase 2: conectar las estadísticas del equipo~~ — ya implementado
   (Admin > Partidos / Entrenos / Stats + Ficha del Jugador en Perfil).
@@ -130,13 +182,20 @@ que da Cloudflare Pages.
 src/
   components/   Header, BottomNav, Login, FichaJugador, iconos
   views/        Calendario, Pagos, Avisos, Perfil, Admin
-  views/admin/  AdminPartidos, AdminEntrenamientos, AdminEstadisticas
+  views/admin/  AdminPartidos, AdminEntrenamientos, AdminEstadisticas,
+                AdminReglas, AdminBancoEjercicios, AdminPlanificacion,
+                AdminResumenes
   data/         datos de muestra (mockData.ts)
-  lib/          cliente de Supabase, hook de jugadores por familia,
-                cálculos de estadísticas (estadisticas.ts)
+  lib/          cliente de Supabase, cliente de solo lectura hacia
+                TacticaFC (tacticaFcClient.ts), respaldo en Sheets
+                (sheetsSync.ts), cálculos de estadísticas y de
+                planificación (estadisticas.ts, planificacion.ts)
 supabase/
   schema.sql                    tablas y reglas de seguridad (proyecto nuevo)
   migracion_admin_reportes.sql  agrega admin + reportes de pago (proyecto existente)
   migracion_estadisticas.sql    agrega partidos, entrenos y ficha del jugador (proyecto existente)
+  migracion_planificacion.sql   agrega reglas, banco, sesiones y vínculo con TacticaFC (proyecto existente)
+sheets/
+  Code.gs                       Google Apps Script del respaldo automático en Sheets
 ```
 

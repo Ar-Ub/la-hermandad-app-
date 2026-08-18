@@ -76,7 +76,6 @@ export function resumenDeJugador(
   jugadorId: string,
   partidos: Partido[],
   partidoJugadores: PartidoJugador[],
-  entrenamientos: Entrenamiento[],
   asistencias: EntrenamientoAsistencia[]
 ): ResumenJugador {
   const partidosPorId = new Map(partidos.map((p) => [p.id, p]))

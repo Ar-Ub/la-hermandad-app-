@@ -315,3 +315,119 @@ $$ language plpgsql security definer;
 create trigger trg_entrenamiento_asistencias_actualizar
 after insert or update or delete on entrenamiento_asistencias
 for each row execute function recalcular_asistencia_pct();
+
+-- ============================================================
+-- Planificación de sesiones de entrenamiento
+-- (reemplaza la hoja de cálculo de planificación del club)
+-- ============================================================
+
+-- Rangos permitidos por tipo de tarea + componente físico. El admin los
+-- ajusta desde Admin > Reglas si su metodología usa otros números.
+create table reglas_ejercicios (
+  id uuid primary key default gen_random_uuid(),
+  tipo_tarea text not null,        -- 'Rondos', 'Ruedas de pase', 'Evoluciones', etc.
+  componente_fisico text not null, -- 'Tensión' | 'Duración' | 'Velocidad' | 'Técnico'
+  jugadores_min integer,
+  jugadores_max integer,
+  espacio_min numeric,             -- m²
+  espacio_max numeric,
+  tiempo_min integer,               -- minutos por serie
+  tiempo_max integer,
+  series_min integer,
+  series_max integer,
+  pausa_min integer,                -- segundos
+  pausa_max integer,
+  densidad_min numeric,             -- m² por jugador
+  densidad_max numeric,
+  created_at timestamptz default now()
+);
+
+-- Catálogo de ejercicios del club, reutilizable entre categorías.
+create table banco_ejercicios (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  tipo_tarea text not null,
+  enfoque text,
+  componente_fisico text not null,
+  jugadores integer not null,
+  espacio_m2 numeric not null,
+  tiempo_min integer not null,
+  series integer not null,
+  pausa_seg integer,
+  diagrama_url text,                -- enlace a una imagen, o el diagrama pegado a mano
+  notas text,
+  tactica_exercise_id uuid,         -- id del ejercicio en TacticaFC, si está vinculado (otro proyecto Supabase)
+  created_at timestamptz default now()
+);
+
+-- Una sesión de entrenamiento planificada para una categoría.
+create table sesiones (
+  id uuid primary key default gen_random_uuid(),
+  categoria_id uuid references categorias(id) not null,
+  fecha date not null,
+  sesion_numero integer not null,
+  microciclo text,
+  mesociclo text,
+  entrenador text,
+  hora text,
+  lugar text,
+  tiempo_total_min integer,
+  tipo_sesion text,                 -- componente físico del día, o 'Mixto' / 'Técnico (neutro)'
+  objetivo_tecnico_tactico text,
+  objetivo_psicologico text,
+  created_at timestamptz default now()
+);
+
+-- Cada tarea (normalmente 3) dentro de una sesión, referenciando un
+-- ejercicio del banco. Puede tener su propio tipo de sesión si se quiere
+-- validar contra un componente físico distinto al de la sesión general.
+create table sesion_tareas (
+  id uuid primary key default gen_random_uuid(),
+  sesion_id uuid references sesiones(id) on delete cascade not null,
+  orden integer not null,           -- 1, 2, 3...
+  ejercicio_id uuid references banco_ejercicios(id) not null,
+  tipo_sesion_override text,
+  diagrama_url_override text,
+  created_at timestamptz default now()
+);
+
+alter table reglas_ejercicios enable row level security;
+alter table banco_ejercicios enable row level security;
+alter table sesiones enable row level security;
+alter table sesion_tareas enable row level security;
+
+create policy "usuarios autenticados ven reglas_ejercicios"
+  on reglas_ejercicios for select using (auth.role() = 'authenticated');
+create policy "admin gestiona reglas_ejercicios"
+  on reglas_ejercicios for insert with check (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin actualiza reglas_ejercicios"
+  on reglas_ejercicios for update using (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin borra reglas_ejercicios"
+  on reglas_ejercicios for delete using (auth.jwt() ->> 'email' in (select email from administradores));
+
+create policy "usuarios autenticados ven banco_ejercicios"
+  on banco_ejercicios for select using (auth.role() = 'authenticated');
+create policy "admin gestiona banco_ejercicios"
+  on banco_ejercicios for insert with check (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin actualiza banco_ejercicios"
+  on banco_ejercicios for update using (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin borra banco_ejercicios"
+  on banco_ejercicios for delete using (auth.jwt() ->> 'email' in (select email from administradores));
+
+create policy "usuarios autenticados ven sesiones"
+  on sesiones for select using (auth.role() = 'authenticated');
+create policy "admin gestiona sesiones"
+  on sesiones for insert with check (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin actualiza sesiones"
+  on sesiones for update using (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin borra sesiones"
+  on sesiones for delete using (auth.jwt() ->> 'email' in (select email from administradores));
+
+create policy "usuarios autenticados ven sesion_tareas"
+  on sesion_tareas for select using (auth.role() = 'authenticated');
+create policy "admin gestiona sesion_tareas"
+  on sesion_tareas for insert with check (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin actualiza sesion_tareas"
+  on sesion_tareas for update using (auth.jwt() ->> 'email' in (select email from administradores));
+create policy "admin borra sesion_tareas"
+  on sesion_tareas for delete using (auth.jwt() ->> 'email' in (select email from administradores));
