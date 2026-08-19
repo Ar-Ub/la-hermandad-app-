@@ -6,6 +6,8 @@ export type JugadorFamilia = {
   nombre: string
   categoriaId: string | null
   categoria: string
+  clubNombre: string | null
+  clubLogoUrl: string | null
 }
 
 // Una familia puede tener más de un hijo en el club. Este hook trae todos
@@ -22,7 +24,7 @@ export function useJugadoresFamilia(autenticado: boolean) {
     setCargando(true)
     supabase
       .from('jugadores')
-      .select('id, nombre, categoria_id, categorias(nombre)')
+      .select('id, nombre, categoria_id, categorias(nombre), clubes(nombre, logo_url)')
       .then(({ data, error }) => {
         if (!error && data) {
           const lista: JugadorFamilia[] = data.map((j: any) => ({
@@ -30,6 +32,8 @@ export function useJugadoresFamilia(autenticado: boolean) {
             nombre: j.nombre,
             categoriaId: j.categoria_id,
             categoria: j.categorias?.nombre ?? '',
+            clubNombre: j.clubes?.nombre ?? null,
+            clubLogoUrl: j.clubes?.logo_url ?? null,
           }))
           setJugadores(lista)
           setJugadorId((actual) => actual ?? lista[0]?.id ?? null)

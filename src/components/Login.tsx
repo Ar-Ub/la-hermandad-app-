@@ -19,12 +19,18 @@ export default function Login({ onDemoLogin }: Props) {
     else setEnviado(true)
   }
 
+  // Antes de loguearse no sabemos todavía a qué club pertenece quien
+  // visita (eso se resuelve después, por su correo) — así que esta
+  // pantalla muestra la marca de la plataforma, no la de un club
+  // específico. Una vez adentro, el Header sí muestra el club real.
   return (
     <div className="flex flex-col items-center justify-center min-h-[420px] px-6 text-center gap-4">
-      <img src="/logo.png" alt="La Hermandad F.C." className="w-16 h-16 rounded-full bg-white object-cover" />
+      <div className="w-16 h-16 rounded-full bg-navy flex items-center justify-center">
+        <span className="text-white text-lg font-semibold tracking-tight">CA</span>
+      </div>
       <div>
-        <p className="text-base font-medium">La Hermandad F.C.</p>
-        <p className="text-sm text-gray-500">Portal de familias y jugadores</p>
+        <p className="text-base font-medium">Ciclo Asiste</p>
+        <p className="text-sm text-gray-500">Portal de familias y jugadores de tu club</p>
       </div>
 
       {!supabaseConfigured && (

@@ -161,9 +161,15 @@ Hermandad:
   formulario público muestra el nombre/logo del club correcto según ese
   slug. Para La Hermandad, nada de esto se nota — sigues viendo
   exactamente lo mismo que antes.
-- **Fase 3 (pendiente):** marca configurable (nombre, logo, colores por
-  club en la app, no solo en el link de registro) y una forma de dar de
-  alta un club nuevo sin tocar código.
+- **Fase 3 (lista, parcial):** el nombre y logo dentro de la app ahora
+  salen de la tabla `clubes`, no del código. Antes de loguearse (cuando
+  todavía no se sabe a qué club perteneces) se muestra la marca de la
+  plataforma, **Ciclo Asiste**; después de loguearte, el Header muestra
+  el club real (La Hermandad F.C. hoy). Pendiente dentro de esta misma
+  fase: colores por club (la columna `color_primario` ya existe pero
+  todavía no se usa en la interfaz), un logo real para Ciclo Asiste (hoy
+  es solo texto), y una forma de dar de alta un club nuevo sin tocar
+  código.
 
 ## 3. Respaldo automático en Google Sheets (gratis)
 

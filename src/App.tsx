@@ -15,6 +15,7 @@ export default function App() {
   const [autenticado, setAutenticado] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [clubSlug, setClubSlug] = useState<string | null>(null)
+  const [clubAdmin, setClubAdmin] = useState<{ nombre: string; logo_url: string | null } | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -34,13 +35,14 @@ export default function App() {
       if (!email) return
       supabase!
         .from('administradores')
-        .select('club_id, clubes(slug)')
+        .select('club_id, clubes(slug, nombre, logo_url)')
         .eq('email', email)
         .limit(1)
         .then(({ data: admin }) => {
           const fila = admin?.[0] as any
           setIsAdmin(Boolean(fila))
           setClubSlug(fila?.clubes?.slug ?? null)
+          setClubAdmin(fila?.clubes ? { nombre: fila.clubes.nombre, logo_url: fila.clubes.logo_url } : null)
         })
     })
   }, [autenticado])
@@ -54,12 +56,21 @@ export default function App() {
   const nombreUsuario = jugadorActual?.nombre.split(' ')[0]
   const categoria = jugadorActual?.categoria || 'Sub-13'
 
+  // Qué club mostrar en el Header: si estás en la pestaña Admin, el club
+  // del que eres admin; si no, el club del jugador que estás viendo.
+  const clubActivo =
+    vista === 'admin' && isAdmin
+      ? clubAdmin
+      : jugadorActual
+        ? { nombre: jugadorActual.clubNombre, logo_url: jugadorActual.clubLogoUrl }
+        : null
+
   return (
     <div className="min-h-screen flex items-center justify-center py-6">
       <div className="w-full max-w-[380px] bg-white rounded-[28px] shadow-xl overflow-hidden border border-gray-200">
         {!dentro ? (
           <>
-            <Header categoria="Portal de familias" nombreUsuario="" />
+            <Header categoria="Portal de familias" nombreUsuario="" nombreClub="Ciclo Asiste" />
             <Login onDemoLogin={() => setAutenticado(true)} />
           </>
         ) : (
@@ -67,6 +78,8 @@ export default function App() {
             <Header
               categoria={vista === 'admin' ? 'Panel de administrador' : categoria}
               nombreUsuario={vista === 'admin' ? undefined : nombreUsuario ?? 'Frank'}
+              nombreClub={clubActivo?.nombre}
+              logoUrl={clubActivo?.logo_url}
             />
 
             {vista !== 'admin' && jugadores.length > 1 && (
