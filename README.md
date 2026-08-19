@@ -78,8 +78,12 @@ su lugar, corre en orden:
 5. `supabase/migracion_registro_publico.sql` — agrega el registro público
    (los padres se inscriben ellos mismos con un link, sin necesitar
    cuenta).
+6. `supabase/migracion_multi_club_fase1.sql` — agrega la base para que en
+   el futuro un solo proyecto pueda servir a varios clubes (fase 1 de 3;
+   no cambia nada de lo que ves hoy en la app, ver sección "Multi-club"
+   más abajo).
 
-Ninguno de los cinco toca ni borra nada de lo que ya tienes cargado.
+Ninguno de los seis toca ni borra nada de lo que ya tienes cargado.
 
 ### Estadísticas (partidos, entrenamientos, ficha del jugador)
 
@@ -138,6 +142,23 @@ en **Admin > Solicitudes**, donde revisas cada una y le das **Aprobar**
 (crea el jugador real, ya con toda la ficha completa) o **Rechazar**. Así
 evitas que cualquiera con el link agregue jugadores fantasma al roster,
 y de paso puedes corregir la categoría si el padre se equivocó al elegir.
+
+### Multi-club (para vender la app a otros clubes)
+
+El plan gratis de Supabase solo permite 2 proyectos activos por cuenta,
+así que un proyecto separado por cliente no escala gratis. El plan es
+que un solo proyecto sirva a varios clubes, separados por `club_id`.
+Esto se hace en 3 fases para no arriesgar los datos reales de La
+Hermandad:
+
+- **Fase 1 (lista):** tabla `clubes` + columna `club_id` en cada tabla
+  existente, todo con un valor por defecto. No cambia nada de lo que ves
+  hoy — La Hermandad sigue siendo, en la práctica, el único club.
+- **Fase 2 (pendiente):** actualizar los permisos (RLS) para que cada
+  club solo vea sus propios datos, y las pantallas para que el registro
+  público y el login sepan a qué club pertenecen.
+- **Fase 3 (pendiente):** marca configurable (nombre, logo, colores por
+  club) y una forma de dar de alta un club nuevo sin tocar código.
 
 ## 3. Respaldo automático en Google Sheets (gratis)
 
@@ -218,6 +239,7 @@ supabase/
   migracion_planificacion.sql   agrega reglas, banco, sesiones y vínculo con TacticaFC (proyecto existente)
   migracion_ficha_completa.sql  agrega responsable, emergencia y ficha médica (proyecto existente)
   migracion_registro_publico.sql agrega el registro público de padres (proyecto existente)
+  migracion_multi_club_fase1.sql agrega la base multi-club (proyecto existente, fase 1 de 3)
 sheets/
   Code.gs                       Google Apps Script del respaldo automático en Sheets
 ```

@@ -176,6 +176,15 @@ export default function RegistroPublico() {
         />
         <input name="seguro_medico" placeholder="Seguro médico (o 'Ninguno')" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
 
+        <label className="flex items-start gap-2 mt-2 text-xs text-gray-600">
+          <input type="checkbox" name="consentimiento" required className="mt-0.5 shrink-0" />
+          <span>
+            Autorizo a La Hermandad F.C. a guardar estos datos (incluyendo información médica) para gestionar la
+            participación de mi hijo/a en el club, y entiendo que puedo pedir que se corrijan o eliminen en
+            cualquier momento contactando al club.
+          </span>
+        </label>
+
         {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
 
         <button disabled={enviando} className="bg-navy text-white text-sm rounded-lg py-2.5 mt-2 disabled:opacity-60">

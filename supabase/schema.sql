@@ -488,3 +488,46 @@ drop policy if exists "publico ve categorias" on categorias;
 create policy "publico ve categorias"
   on categorias for select
   using (true);
+
+-- ============================================================
+-- Base multi-club (ver supabase/migracion_multi_club_fase1.sql para el
+-- detalle). En un proyecto nuevo, arranca con un solo club — cambia
+-- 'Mi Club' y el slug por los tuyos.
+-- ============================================================
+
+create table clubes (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  slug text not null unique,
+  logo_url text,
+  color_primario text,
+  created_at timestamptz default now()
+);
+
+insert into clubes (id, nombre, slug, color_primario)
+values ('a1a2a3a4-0000-4000-8000-000000000001', 'Mi Club', 'mi-club', '#0B1B3B');
+
+alter table categorias add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table jugadores add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table eventos add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table pagos add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table avisos add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table administradores add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table reportes_pago add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table partidos add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table partido_jugadores add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table entrenamientos add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table entrenamiento_asistencias add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table reglas_ejercicios add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table banco_ejercicios add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table sesiones add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table sesion_tareas add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+alter table solicitudes_registro add column club_id uuid references clubes(id) not null default 'a1a2a3a4-0000-4000-8000-000000000001';
+
+alter table administradores drop constraint administradores_pkey;
+alter table administradores add primary key (email, club_id);
+
+alter table clubes enable row level security;
+create policy "publico ve clubes"
+  on clubes for select
+  using (true);
