@@ -70,7 +70,7 @@ export default function App() {
       <div className="w-full max-w-[380px] bg-white rounded-[28px] shadow-xl overflow-hidden border border-gray-200">
         {!dentro ? (
           <>
-            <Header categoria="Portal de familias" nombreUsuario="" nombreClub="Ciclo Asiste" />
+            <Header categoria="Portal de familias" nombreUsuario="" nombreClub="Ciclo Asiste" logoUrl="/ciclo-asiste-logo.svg" />
             <Login onDemoLogin={() => setAutenticado(true)} />
           </>
         ) : (

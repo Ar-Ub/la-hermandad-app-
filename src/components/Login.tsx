@@ -25,9 +25,7 @@ export default function Login({ onDemoLogin }: Props) {
   // específico. Una vez adentro, el Header sí muestra el club real.
   return (
     <div className="flex flex-col items-center justify-center min-h-[420px] px-6 text-center gap-4">
-      <div className="w-16 h-16 rounded-full bg-navy flex items-center justify-center">
-        <span className="text-white text-lg font-semibold tracking-tight">CA</span>
-      </div>
+      <img src="/ciclo-asiste-logo.svg" alt="Ciclo Asiste" className="w-16 h-16 rounded-full" />
       <div>
         <p className="text-base font-medium">Ciclo Asiste</p>
         <p className="text-sm text-gray-500">Portal de familias y jugadores de tu club</p>
