@@ -11,6 +11,7 @@ import AdminReglas from './admin/AdminReglas'
 import AdminBancoEjercicios from './admin/AdminBancoEjercicios'
 import AdminPlanificacion from './admin/AdminPlanificacion'
 import AdminResumenes from './admin/AdminResumenes'
+import AdminSolicitudes, { type SolicitudRegistro } from './admin/AdminSolicitudes'
 
 type Categoria = { id: string; nombre: string }
 
@@ -27,6 +28,15 @@ type JugadorDetalle = {
   familia_email: string
   estadoPago: string | null
   mesPago: string | null
+  responsable_nombre: string | null
+  responsable_parentesco: string | null
+  responsable_telefono: string | null
+  contacto_emergencia_nombre: string | null
+  contacto_emergencia_telefono: string | null
+  tipo_sangre: string | null
+  alergias: string | null
+  condiciones_medicas: string | null
+  seguro_medico: string | null
 }
 
 type ReportePago = {
@@ -38,7 +48,16 @@ type ReportePago = {
   jugadores: { nombre: string } | null
 }
 
-type Seccion = 'general' | 'partidos' | 'entrenamientos' | 'estadisticas' | 'reglas' | 'banco' | 'planificacion' | 'resumenes'
+type Seccion =
+  | 'general'
+  | 'solicitudes'
+  | 'partidos'
+  | 'entrenamientos'
+  | 'estadisticas'
+  | 'reglas'
+  | 'banco'
+  | 'planificacion'
+  | 'resumenes'
 
 const estilosPago: Record<string, string> = {
   pagado: 'bg-green-100 text-green-700',
@@ -54,6 +73,7 @@ const etiquetaPago: Record<string, string> = {
 
 const secciones: { id: Seccion; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'solicitudes', label: 'Solicitudes' },
   { id: 'partidos', label: 'Partidos' },
   { id: 'entrenamientos', label: 'Entrenos' },
   { id: 'estadisticas', label: 'Stats' },
@@ -68,9 +88,11 @@ export default function Admin() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [jugadoresDetalle, setJugadoresDetalle] = useState<JugadorDetalle[]>([])
   const [reportes, setReportes] = useState<ReportePago[]>([])
+  const [solicitudes, setSolicitudes] = useState<SolicitudRegistro[]>([])
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [fichaAbierta, setFichaAbierta] = useState<string | null>(null)
+  const [editandoId, setEditandoId] = useState<string | null>(null)
 
   const [partidos, setPartidos] = useState<Partido[]>([])
   const [partidoJugadores, setPartidoJugadores] = useState<PartidoJugador[]>([])
@@ -94,6 +116,7 @@ export default function Admin() {
     cargarReportes()
     cargarEstadisticas()
     cargarPlanificacion()
+    cargarSolicitudes()
   }, [])
 
   // Cada vez que cambian los datos base de jugadores/partidos/asistencias,
@@ -122,6 +145,15 @@ export default function Admin() {
         asistencias_gol: resumen.asistencias,
         promedio_actuacion: resumen.promedioActuacion ?? '',
         asistencia_entrenos_pct: j.asistencia_pct,
+        responsable_nombre: j.responsable_nombre ?? '',
+        responsable_parentesco: j.responsable_parentesco ?? '',
+        responsable_telefono: j.responsable_telefono ?? '',
+        contacto_emergencia_nombre: j.contacto_emergencia_nombre ?? '',
+        contacto_emergencia_telefono: j.contacto_emergencia_telefono ?? '',
+        tipo_sangre: j.tipo_sangre ?? '',
+        alergias: j.alergias ?? '',
+        condiciones_medicas: j.condiciones_medicas ?? '',
+        seguro_medico: j.seguro_medico ?? '',
       }
     })
     reemplazarTablaCompleta('Ficha_Jugadores', filas)
@@ -133,7 +165,7 @@ export default function Admin() {
     const { data: jugadoresData } = await supabase
       .from('jugadores')
       .select(
-        'id, nombre, posicion, categoria_id, fecha_nacimiento, foto_url, asistencia_pct, partidos_jugados, familia_email, categorias(nombre)'
+        'id, nombre, posicion, categoria_id, fecha_nacimiento, foto_url, asistencia_pct, partidos_jugados, familia_email, categorias(nombre), responsable_nombre, responsable_parentesco, responsable_telefono, contacto_emergencia_nombre, contacto_emergencia_telefono, tipo_sangre, alergias, condiciones_medicas, seguro_medico'
       )
       .order('nombre', { ascending: true })
 
@@ -164,6 +196,15 @@ export default function Admin() {
       familia_email: j.familia_email,
       estadoPago: ultimoPago.get(j.id)?.estado ?? null,
       mesPago: ultimoPago.get(j.id)?.mes ?? null,
+      responsable_nombre: j.responsable_nombre ?? null,
+      responsable_parentesco: j.responsable_parentesco ?? null,
+      responsable_telefono: j.responsable_telefono ?? null,
+      contacto_emergencia_nombre: j.contacto_emergencia_nombre ?? null,
+      contacto_emergencia_telefono: j.contacto_emergencia_telefono ?? null,
+      tipo_sangre: j.tipo_sangre ?? null,
+      alergias: j.alergias ?? null,
+      condiciones_medicas: j.condiciones_medicas ?? null,
+      seguro_medico: j.seguro_medico ?? null,
     }))
     setJugadoresDetalle(detalle)
   }
@@ -189,6 +230,15 @@ export default function Admin() {
     if (pj) setPartidoJugadores(pj as PartidoJugador[])
     if (e) setEntrenamientos(e as Entrenamiento[])
     if (a) setAsistencias(a as EntrenamientoAsistencia[])
+  }
+
+  async function cargarSolicitudes() {
+    if (!supabase) return
+    const { data } = await supabase
+      .from('solicitudes_registro')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (data) setSolicitudes(data as SolicitudRegistro[])
   }
 
   async function cargarPlanificacion() {
@@ -241,6 +291,15 @@ export default function Admin() {
         foto_url: fd.get('foto_url') || null,
         asistencia_pct: 0,
         partidos_jugados: 0,
+        responsable_nombre: fd.get('responsable_nombre') || null,
+        responsable_parentesco: fd.get('responsable_parentesco') || null,
+        responsable_telefono: fd.get('responsable_telefono') || null,
+        contacto_emergencia_nombre: fd.get('contacto_emergencia_nombre') || null,
+        contacto_emergencia_telefono: fd.get('contacto_emergencia_telefono') || null,
+        tipo_sangre: fd.get('tipo_sangre') || null,
+        alergias: fd.get('alergias') || null,
+        condiciones_medicas: fd.get('condiciones_medicas') || null,
+        seguro_medico: fd.get('seguro_medico') || null,
       })
       .select()
       .single()
@@ -248,6 +307,41 @@ export default function Admin() {
     if (!error) {
       if (data) sincronizarFila('jugadores', data)
       form.reset()
+      cargarJugadoresDetalle()
+    }
+  }
+
+  async function editarJugador(e: React.FormEvent<HTMLFormElement>, jugadorId: string) {
+    e.preventDefault()
+    if (!supabase) return
+    const form = e.currentTarget
+    const fd = new FormData(form)
+    const { data, error } = await supabase
+      .from('jugadores')
+      .update({
+        nombre: fd.get('nombre'),
+        posicion: fd.get('posicion'),
+        categoria_id: fd.get('categoria_id'),
+        familia_email: fd.get('familia_email'),
+        fecha_nacimiento: fd.get('fecha_nacimiento') || null,
+        foto_url: fd.get('foto_url') || null,
+        responsable_nombre: fd.get('responsable_nombre') || null,
+        responsable_parentesco: fd.get('responsable_parentesco') || null,
+        responsable_telefono: fd.get('responsable_telefono') || null,
+        contacto_emergencia_nombre: fd.get('contacto_emergencia_nombre') || null,
+        contacto_emergencia_telefono: fd.get('contacto_emergencia_telefono') || null,
+        tipo_sangre: fd.get('tipo_sangre') || null,
+        alergias: fd.get('alergias') || null,
+        condiciones_medicas: fd.get('condiciones_medicas') || null,
+        seguro_medico: fd.get('seguro_medico') || null,
+      })
+      .eq('id', jugadorId)
+      .select()
+      .single()
+    avisar(error ? 'Error: ' + error.message : 'Jugador actualizado')
+    if (!error) {
+      if (data) sincronizarFila('jugadores', data)
+      setEditandoId(null)
       cargarJugadoresDetalle()
     }
   }
@@ -305,17 +399,23 @@ export default function Admin() {
   return (
     <div className="flex flex-col">
       <div className="px-5 pt-3 flex gap-1.5 overflow-x-auto">
-        {secciones.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSeccion(s.id)}
-            className={`shrink-0 text-xs px-3 py-1.5 rounded-full border ${
-              seccion === s.id ? 'bg-navy text-white border-navy' : 'bg-white text-gray-600 border-gray-300'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
+        {secciones.map((s) => {
+          const pendientes = s.id === 'solicitudes' ? solicitudes.filter((x) => x.estado === 'pendiente').length : 0
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSeccion(s.id)}
+              className={`shrink-0 text-xs px-3 py-1.5 rounded-full border ${
+                seccion === s.id ? 'bg-navy text-white border-navy' : 'bg-white text-gray-600 border-gray-300'
+              }`}
+            >
+              {s.label}
+              {pendientes > 0 && (
+                <span className="ml-1 bg-red-500 text-white rounded-full px-1.5 text-[10px]">{pendientes}</span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       <div className="px-5 py-4 flex flex-col gap-6 max-h-[520px] overflow-y-auto">
@@ -354,10 +454,22 @@ export default function Admin() {
                           {j.estadoPago ? etiquetaPago[j.estadoPago] ?? j.estadoPago : 'Sin pagos'}
                         </span>
                         <button
-                          onClick={() => setFichaAbierta(fichaAbierta === j.id ? null : j.id)}
+                          onClick={() => {
+                            setFichaAbierta(fichaAbierta === j.id ? null : j.id)
+                            setEditandoId(null)
+                          }}
                           className="text-blue-600 font-medium"
                         >
                           {fichaAbierta === j.id ? 'Cerrar' : 'Ficha'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditandoId(editandoId === j.id ? null : j.id)
+                            setFichaAbierta(null)
+                          }}
+                          className="text-gray-500 font-medium"
+                        >
+                          {editandoId === j.id ? 'Cancelar' : 'Editar'}
                         </button>
                       </div>
                     </div>
@@ -370,8 +482,144 @@ export default function Admin() {
                           fechaNacimiento={j.fecha_nacimiento}
                           fotoUrl={j.foto_url}
                           resumen={resumenDeJugador(j.id, partidos, partidoJugadores, asistencias)}
+                          responsableNombre={j.responsable_nombre}
+                          responsableParentesco={j.responsable_parentesco}
+                          responsableTelefono={j.responsable_telefono}
+                          contactoEmergenciaNombre={j.contacto_emergencia_nombre}
+                          contactoEmergenciaTelefono={j.contacto_emergencia_telefono}
+                          tipoSangre={j.tipo_sangre}
+                          alergias={j.alergias}
+                          condicionesMedicas={j.condiciones_medicas}
+                          seguroMedico={j.seguro_medico}
                         />
                       </div>
+                    )}
+                    {editandoId === j.id && (
+                      <form
+                        onSubmit={(e) => editarJugador(e, j.id)}
+                        className="mt-2 -mx-3 border-t border-gray-200 bg-white rounded-b-lg px-3 pt-3 pb-2 flex flex-col gap-2"
+                      >
+                        <input
+                          name="nombre"
+                          defaultValue={j.nombre}
+                          required
+                          placeholder="Nombre del jugador"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <input
+                          name="posicion"
+                          defaultValue={j.posicion}
+                          placeholder="Posición"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <select
+                          name="categoria_id"
+                          defaultValue={j.categoria_id ?? ''}
+                          required
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <option value="">Categoría...</option>
+                          {categorias.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          name="familia_email"
+                          defaultValue={j.familia_email}
+                          required
+                          type="email"
+                          placeholder="Correo de la familia"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <label className="text-[11px] text-gray-500 -mb-1">Fecha de nacimiento</label>
+                        <input
+                          name="fecha_nacimiento"
+                          type="date"
+                          defaultValue={j.fecha_nacimiento ?? ''}
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <label className="text-[11px] text-gray-500 -mb-1">Foto (enlace directo)</label>
+                        <input
+                          name="foto_url"
+                          defaultValue={j.foto_url ?? ''}
+                          placeholder="https://..."
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+
+                        <p className="text-xs font-medium text-gray-500 mt-1">Responsable</p>
+                        <input
+                          name="responsable_nombre"
+                          defaultValue={j.responsable_nombre ?? ''}
+                          placeholder="Nombre del responsable"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <select
+                          name="responsable_parentesco"
+                          defaultValue={j.responsable_parentesco ?? ''}
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <option value="">Parentesco...</option>
+                          <option value="Padre">Padre</option>
+                          <option value="Madre">Madre</option>
+                          <option value="Tutor">Tutor</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                        <input
+                          name="responsable_telefono"
+                          defaultValue={j.responsable_telefono ?? ''}
+                          placeholder="Teléfono del responsable"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+
+                        <p className="text-xs font-medium text-gray-500 mt-1">Contacto de emergencia</p>
+                        <input
+                          name="contacto_emergencia_nombre"
+                          defaultValue={j.contacto_emergencia_nombre ?? ''}
+                          placeholder="Nombre (si es distinto al responsable)"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <input
+                          name="contacto_emergencia_telefono"
+                          defaultValue={j.contacto_emergencia_telefono ?? ''}
+                          placeholder="Teléfono de emergencia"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+
+                        <p className="text-xs font-medium text-gray-500 mt-1">Ficha médica</p>
+                        <select
+                          name="tipo_sangre"
+                          defaultValue={j.tipo_sangre ?? ''}
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <option value="">Tipo de sangre...</option>
+                          {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Desconocido'].map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          name="alergias"
+                          defaultValue={j.alergias ?? ''}
+                          placeholder="Alergias (o 'Ninguna')"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <input
+                          name="condiciones_medicas"
+                          defaultValue={j.condiciones_medicas ?? ''}
+                          placeholder="Condiciones médicas (asma, etc.)"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <input
+                          name="seguro_medico"
+                          defaultValue={j.seguro_medico ?? ''}
+                          placeholder="Seguro médico (o 'Ninguno')"
+                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <button className="bg-navy text-white text-sm rounded-lg py-2 mt-1">Guardar cambios</button>
+                      </form>
                     )}
                   </div>
                 ))}
@@ -438,6 +686,35 @@ export default function Admin() {
                 Foto (enlace directo, ej. desde Google Drive — opcional)
               </label>
               <input name="foto_url" placeholder="https://..." className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+
+              <p className="text-xs font-medium text-gray-500 mt-1">Responsable (opcional, se puede completar luego con Editar)</p>
+              <input name="responsable_nombre" placeholder="Nombre del responsable" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              <select name="responsable_parentesco" className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <option value="">Parentesco...</option>
+                <option value="Padre">Padre</option>
+                <option value="Madre">Madre</option>
+                <option value="Tutor">Tutor</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <input name="responsable_telefono" placeholder="Teléfono del responsable" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+
+              <p className="text-xs font-medium text-gray-500 mt-1">Contacto de emergencia</p>
+              <input name="contacto_emergencia_nombre" placeholder="Nombre (si es distinto al responsable)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              <input name="contacto_emergencia_telefono" placeholder="Teléfono de emergencia" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+
+              <p className="text-xs font-medium text-gray-500 mt-1">Ficha médica</p>
+              <select name="tipo_sangre" className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <option value="">Tipo de sangre...</option>
+                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Desconocido'].map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <input name="alergias" placeholder="Alergias (o 'Ninguna')" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              <input name="condiciones_medicas" placeholder="Condiciones médicas (asma, etc.)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              <input name="seguro_medico" placeholder="Seguro médico (o 'Ninguno')" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+
               <button className="bg-navy text-white text-sm rounded-lg py-2">Agregar jugador</button>
             </form>
 
@@ -485,6 +762,18 @@ export default function Admin() {
               <button className="bg-navy text-white text-sm rounded-lg py-2">Publicar aviso</button>
             </form>
           </>
+        )}
+
+        {seccion === 'solicitudes' && (
+          <AdminSolicitudes
+            solicitudes={solicitudes}
+            categorias={categorias}
+            onRecargar={() => {
+              cargarSolicitudes()
+              cargarJugadoresDetalle()
+            }}
+            avisar={avisar}
+          />
         )}
 
         {seccion === 'partidos' && (

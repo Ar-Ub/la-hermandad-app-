@@ -38,6 +38,15 @@ export type Jugador = {
   asistencia_pct: number
   partidos_jugados: number
   mensualidad_al_dia: boolean
+  responsable_nombre?: string | null
+  responsable_parentesco?: string | null
+  responsable_telefono?: string | null
+  contacto_emergencia_nombre?: string | null
+  contacto_emergencia_telefono?: string | null
+  tipo_sangre?: string | null
+  alergias?: string | null
+  condiciones_medicas?: string | null
+  seguro_medico?: string | null
 }
 
 export const eventosMock: Evento[] = [

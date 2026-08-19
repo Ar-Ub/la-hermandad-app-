@@ -179,6 +179,18 @@ create policy "admin actualiza reportes"
 alter table jugadores add column if not exists fecha_nacimiento date;
 alter table jugadores add column if not exists foto_url text;
 
+-- Responsable, contacto de emergencia y ficha médica básica (ver
+-- supabase/migracion_ficha_completa.sql para el detalle de cada columna).
+alter table jugadores add column if not exists responsable_nombre text;
+alter table jugadores add column if not exists responsable_parentesco text;
+alter table jugadores add column if not exists responsable_telefono text;
+alter table jugadores add column if not exists contacto_emergencia_nombre text;
+alter table jugadores add column if not exists contacto_emergencia_telefono text;
+alter table jugadores add column if not exists tipo_sangre text;
+alter table jugadores add column if not exists alergias text;
+alter table jugadores add column if not exists condiciones_medicas text;
+alter table jugadores add column if not exists seguro_medico text;
+
 -- Un partido por categoría. Los goles del jugador van en partido_jugadores;
 -- goles_favor/goles_contra aquí son el marcador final del equipo.
 create table partidos (
@@ -431,3 +443,48 @@ create policy "admin actualiza sesion_tareas"
   on sesion_tareas for update using (auth.jwt() ->> 'email' in (select email from administradores));
 create policy "admin borra sesion_tareas"
   on sesion_tareas for delete using (auth.jwt() ->> 'email' in (select email from administradores));
+
+-- ============================================================
+-- Registro público: link para que los padres se inscriban solos
+-- (ver supabase/migracion_registro_publico.sql para más detalle)
+-- ============================================================
+
+create table solicitudes_registro (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  posicion text,
+  categoria_id uuid references categorias(id),
+  familia_email text not null,
+  fecha_nacimiento date,
+  foto_url text,
+  responsable_nombre text,
+  responsable_parentesco text,
+  responsable_telefono text,
+  contacto_emergencia_nombre text,
+  contacto_emergencia_telefono text,
+  tipo_sangre text,
+  alergias text,
+  condiciones_medicas text,
+  seguro_medico text,
+  estado text not null default 'pendiente', -- pendiente | aprobada | rechazada
+  created_at timestamptz default now()
+);
+
+alter table solicitudes_registro enable row level security;
+
+create policy "cualquiera envia una solicitud de registro"
+  on solicitudes_registro for insert
+  with check (true);
+
+create policy "admin ve las solicitudes"
+  on solicitudes_registro for select
+  using (auth.jwt() ->> 'email' in (select email from administradores));
+
+create policy "admin actualiza solicitudes"
+  on solicitudes_registro for update
+  using (auth.jwt() ->> 'email' in (select email from administradores));
+
+drop policy if exists "publico ve categorias" on categorias;
+create policy "publico ve categorias"
+  on categorias for select
+  using (true);

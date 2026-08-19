@@ -42,6 +42,15 @@ export default function Perfil({ jugadorId }: Props) {
           asistencia_pct: data.asistencia_pct ?? 0,
           partidos_jugados: data.partidos_jugados ?? 0,
           mensualidad_al_dia: alDia,
+          responsable_nombre: data.responsable_nombre ?? null,
+          responsable_parentesco: data.responsable_parentesco ?? null,
+          responsable_telefono: data.responsable_telefono ?? null,
+          contacto_emergencia_nombre: data.contacto_emergencia_nombre ?? null,
+          contacto_emergencia_telefono: data.contacto_emergencia_telefono ?? null,
+          tipo_sangre: data.tipo_sangre ?? null,
+          alergias: data.alergias ?? null,
+          condiciones_medicas: data.condiciones_medicas ?? null,
+          seguro_medico: data.seguro_medico ?? null,
         })
       })
 
@@ -94,6 +103,15 @@ export default function Perfil({ jugadorId }: Props) {
         fechaNacimiento={jugador.fecha_nacimiento}
         fotoUrl={jugador.foto_url}
         resumen={resumen}
+        responsableNombre={jugador.responsable_nombre}
+        responsableParentesco={jugador.responsable_parentesco}
+        responsableTelefono={jugador.responsable_telefono}
+        contactoEmergenciaNombre={jugador.contacto_emergencia_nombre}
+        contactoEmergenciaTelefono={jugador.contacto_emergencia_telefono}
+        tipoSangre={jugador.tipo_sangre}
+        alergias={jugador.alergias}
+        condicionesMedicas={jugador.condiciones_medicas}
+        seguroMedico={jugador.seguro_medico}
       />
     </div>
   )

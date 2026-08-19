@@ -22,10 +22,37 @@ type Props = {
   fechaNacimiento?: string | null
   fotoUrl?: string | null
   resumen: ResumenJugador
+  responsableNombre?: string | null
+  responsableParentesco?: string | null
+  responsableTelefono?: string | null
+  contactoEmergenciaNombre?: string | null
+  contactoEmergenciaTelefono?: string | null
+  tipoSangre?: string | null
+  alergias?: string | null
+  condicionesMedicas?: string | null
+  seguroMedico?: string | null
 }
 
-export default function FichaJugador({ nombre, categoria, posicion, fechaNacimiento, fotoUrl, resumen }: Props) {
+export default function FichaJugador({
+  nombre,
+  categoria,
+  posicion,
+  fechaNacimiento,
+  fotoUrl,
+  resumen,
+  responsableNombre,
+  responsableParentesco,
+  responsableTelefono,
+  contactoEmergenciaNombre,
+  contactoEmergenciaTelefono,
+  tipoSangre,
+  alergias,
+  condicionesMedicas,
+  seguroMedico,
+}: Props) {
   const edad = calcularEdad(fechaNacimiento)
+  const hayResponsable = responsableNombre || responsableTelefono || contactoEmergenciaNombre || contactoEmergenciaTelefono
+  const hayFichaMedica = tipoSangre || alergias || condicionesMedicas || seguroMedico
 
   return (
     <div className="px-5 py-4">
@@ -80,7 +107,7 @@ export default function FichaJugador({ nombre, categoria, posicion, fechaNacimie
       {resumen.historialPartidos.length === 0 ? (
         <p className="text-xs text-gray-400">Todavía no hay partidos registrados.</p>
       ) : (
-        <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+        <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto mb-4">
           {resumen.historialPartidos.map((h, i) => {
             const d = new Date(h.fecha + 'T00:00:00')
             return (
@@ -103,6 +130,77 @@ export default function FichaJugador({ nombre, categoria, posicion, fechaNacimie
               </div>
             )
           })}
+        </div>
+      )}
+
+      {hayResponsable && (
+        <div className="mb-4">
+          <p className="text-sm font-medium mb-2">Responsable</p>
+          <table className="w-full text-[13px]">
+            <tbody>
+              {responsableNombre && (
+                <tr>
+                  <td className="text-gray-500 py-1.5">Nombre</td>
+                  <td className="text-right font-medium py-1.5">
+                    {responsableNombre}
+                    {responsableParentesco ? ` (${responsableParentesco})` : ''}
+                  </td>
+                </tr>
+              )}
+              {responsableTelefono && (
+                <tr className="border-t border-gray-100">
+                  <td className="text-gray-500 py-1.5">Teléfono</td>
+                  <td className="text-right font-medium py-1.5">{responsableTelefono}</td>
+                </tr>
+              )}
+              {contactoEmergenciaNombre && (
+                <tr className="border-t border-gray-100">
+                  <td className="text-gray-500 py-1.5">Emergencia</td>
+                  <td className="text-right font-medium py-1.5">{contactoEmergenciaNombre}</td>
+                </tr>
+              )}
+              {contactoEmergenciaTelefono && (
+                <tr className="border-t border-gray-100">
+                  <td className="text-gray-500 py-1.5">Tel. emergencia</td>
+                  <td className="text-right font-medium py-1.5">{contactoEmergenciaTelefono}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {hayFichaMedica && (
+        <div>
+          <p className="text-sm font-medium mb-2">Ficha médica</p>
+          <table className="w-full text-[13px]">
+            <tbody>
+              {tipoSangre && (
+                <tr>
+                  <td className="text-gray-500 py-1.5">Tipo de sangre</td>
+                  <td className="text-right font-medium py-1.5">{tipoSangre}</td>
+                </tr>
+              )}
+              {alergias && (
+                <tr className="border-t border-gray-100">
+                  <td className="text-gray-500 py-1.5 align-top">Alergias</td>
+                  <td className="text-right font-medium py-1.5">{alergias}</td>
+                </tr>
+              )}
+              {condicionesMedicas && (
+                <tr className="border-t border-gray-100">
+                  <td className="text-gray-500 py-1.5 align-top">Condiciones</td>
+                  <td className="text-right font-medium py-1.5">{condicionesMedicas}</td>
+                </tr>
+              )}
+              {seguroMedico && (
+                <tr className="border-t border-gray-100">
+                  <td className="text-gray-500 py-1.5">Seguro médico</td>
+                  <td className="text-right font-medium py-1.5">{seguroMedico}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

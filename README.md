@@ -72,8 +72,14 @@ su lugar, corre en orden:
    la hoja de cálculo de planificación de entrenamientos). Si ya la
    corriste antes de que existiera el vínculo con TacticaFC, córrela de
    nuevo: solo agrega la columna que falta, no duplica nada.
+4. `supabase/migracion_ficha_completa.sql` — agrega responsable, contacto
+   de emergencia y ficha médica básica a cada jugador (completa la Ficha
+   del Jugador con lo que ya tenías cargado antes con solo nombre/foto).
+5. `supabase/migracion_registro_publico.sql` — agrega el registro público
+   (los padres se inscriben ellos mismos con un link, sin necesitar
+   cuenta).
 
-Ninguno de los tres toca ni borra nada de lo que ya tienes cargado.
+Ninguno de los cinco toca ni borra nada de lo que ya tienes cargado.
 
 ### Estadísticas (partidos, entrenamientos, ficha del jugador)
 
@@ -87,10 +93,13 @@ jugados" y "% de asistencia" de cada jugador se recalculan solos.
 historial contra rivales — equivalente a esas mismas hojas del Excel,
 solo para el cuerpo técnico (con semáforo verde/rojo comparativo).
 
-La **Ficha del Jugador** (foto, datos, estadísticas e historial de
-partidos, sin los colores comparativos) ahora la ven las familias
-directamente en la pestaña **Perfil** de la app — ya no hace falta
-exportar un PDF y enviarlo aparte.
+La **Ficha del Jugador** (foto, datos, estadísticas, historial de
+partidos, responsable/contacto de emergencia y ficha médica básica — sin
+los colores comparativos) ahora la ven las familias directamente en la
+pestaña **Perfil** de la app — ya no hace falta exportar un PDF y
+enviarlo aparte. Desde **Admin > General**, cada jugador tiene un botón
+**Editar** para completar o corregir esos datos en cualquier momento
+(no solo al agregarlo).
 
 Para la foto, sigue usando el mismo truco de Google Drive de siempre:
 sube la foto ▸ clic derecho ▸ Compartir ▸ 'Cualquier persona con el
@@ -117,6 +126,18 @@ ese proyecto. Si TacticaFC corre solo en tu computadora (`localhost`)
 sigue funcionando igual: en cuanto guardes un ejercicio ahí, aparece acá
 — no hace falta que esté publicada en internet para que la conexión
 funcione, solo que ambas usen la misma base de datos en la nube.
+
+### Registro público (los padres se inscriben solos)
+
+Desde **Admin > Solicitudes** hay un link (algo como
+`tu-app.workers.dev/?registro=1`) que puedes compartir por WhatsApp o
+redes. Los padres lo abren sin necesitar cuenta ni contraseña, y llenan
+los datos del jugador, del responsable, contacto de emergencia y ficha
+médica. Eso NO crea el jugador directo: queda como solicitud pendiente
+en **Admin > Solicitudes**, donde revisas cada una y le das **Aprobar**
+(crea el jugador real, ya con toda la ficha completa) o **Rechazar**. Así
+evitas que cualquiera con el link agregue jugadores fantasma al roster,
+y de paso puedes corregir la categoría si el padre se equivocó al elegir.
 
 ## 3. Respaldo automático en Google Sheets (gratis)
 
@@ -181,10 +202,10 @@ que da Cloudflare Pages.
 ```
 src/
   components/   Header, BottomNav, Login, FichaJugador, iconos
-  views/        Calendario, Pagos, Avisos, Perfil, Admin
+  views/        Calendario, Pagos, Avisos, Perfil, Admin, RegistroPublico
   views/admin/  AdminPartidos, AdminEntrenamientos, AdminEstadisticas,
                 AdminReglas, AdminBancoEjercicios, AdminPlanificacion,
-                AdminResumenes
+                AdminResumenes, AdminSolicitudes
   data/         datos de muestra (mockData.ts)
   lib/          cliente de Supabase, cliente de solo lectura hacia
                 TacticaFC (tacticaFcClient.ts), respaldo en Sheets
@@ -195,6 +216,8 @@ supabase/
   migracion_admin_reportes.sql  agrega admin + reportes de pago (proyecto existente)
   migracion_estadisticas.sql    agrega partidos, entrenos y ficha del jugador (proyecto existente)
   migracion_planificacion.sql   agrega reglas, banco, sesiones y vínculo con TacticaFC (proyecto existente)
+  migracion_ficha_completa.sql  agrega responsable, emergencia y ficha médica (proyecto existente)
+  migracion_registro_publico.sql agrega el registro público de padres (proyecto existente)
 sheets/
   Code.gs                       Google Apps Script del respaldo automático en Sheets
 ```
