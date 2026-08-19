@@ -83,7 +83,11 @@ const secciones: { id: Seccion; label: string }[] = [
   { id: 'resumenes', label: 'Resúmenes' },
 ]
 
-export default function Admin() {
+type Props = {
+  clubSlug?: string | null
+}
+
+export default function Admin({ clubSlug }: Props) {
   const [seccion, setSeccion] = useState<Seccion>('general')
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [jugadoresDetalle, setJugadoresDetalle] = useState<JugadorDetalle[]>([])
@@ -768,6 +772,7 @@ export default function Admin() {
           <AdminSolicitudes
             solicitudes={solicitudes}
             categorias={categorias}
+            clubSlug={clubSlug}
             onRecargar={() => {
               cargarSolicitudes()
               cargarJugadoresDetalle()

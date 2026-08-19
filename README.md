@@ -154,11 +154,16 @@ Hermandad:
 - **Fase 1 (lista):** tabla `clubes` + columna `club_id` en cada tabla
   existente, todo con un valor por defecto. No cambia nada de lo que ves
   hoy — La Hermandad sigue siendo, en la práctica, el único club.
-- **Fase 2 (pendiente):** actualizar los permisos (RLS) para que cada
-  club solo vea sus propios datos, y las pantallas para que el registro
-  público y el login sepan a qué club pertenecen.
+- **Fase 2 (lista):** los permisos (RLS) ahora exigen que cada fila
+  pertenezca a tu club — un admin de un club no puede ver ni tocar datos
+  de otro. El link de registro público ahora incluye `&club=tu-slug`
+  (Admin > Solicitudes te da el link correcto ya armado), y el
+  formulario público muestra el nombre/logo del club correcto según ese
+  slug. Para La Hermandad, nada de esto se nota — sigues viendo
+  exactamente lo mismo que antes.
 - **Fase 3 (pendiente):** marca configurable (nombre, logo, colores por
-  club) y una forma de dar de alta un club nuevo sin tocar código.
+  club en la app, no solo en el link de registro) y una forma de dar de
+  alta un club nuevo sin tocar código.
 
 ## 3. Respaldo automático en Google Sheets (gratis)
 
@@ -240,6 +245,7 @@ supabase/
   migracion_ficha_completa.sql  agrega responsable, emergencia y ficha médica (proyecto existente)
   migracion_registro_publico.sql agrega el registro público de padres (proyecto existente)
   migracion_multi_club_fase1.sql agrega la base multi-club (proyecto existente, fase 1 de 3)
+  migracion_multi_club_fase2.sql seguridad por club, RLS (proyecto existente, fase 2 de 3)
 sheets/
   Code.gs                       Google Apps Script del respaldo automático en Sheets
 ```

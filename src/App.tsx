@@ -14,6 +14,7 @@ export default function App() {
   const [vista, setVista] = useState<Vista>('calendario')
   const [autenticado, setAutenticado] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [clubSlug, setClubSlug] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -33,10 +34,14 @@ export default function App() {
       if (!email) return
       supabase!
         .from('administradores')
-        .select('email')
+        .select('club_id, clubes(slug)')
         .eq('email', email)
-        .maybeSingle()
-        .then(({ data: admin }) => setIsAdmin(Boolean(admin)))
+        .limit(1)
+        .then(({ data: admin }) => {
+          const fila = admin?.[0] as any
+          setIsAdmin(Boolean(fila))
+          setClubSlug(fila?.clubes?.slug ?? null)
+        })
     })
   }, [autenticado])
 
@@ -86,7 +91,7 @@ export default function App() {
             {vista === 'pagos' && <Pagos jugadorId={jugadorId} />}
             {vista === 'avisos' && <Avisos categoriaId={jugadorActual?.categoriaId ?? null} />}
             {vista === 'perfil' && <Perfil jugadorId={jugadorId} />}
-            {vista === 'admin' && isAdmin && <Admin />}
+            {vista === 'admin' && isAdmin && <Admin clubSlug={clubSlug} />}
             <BottomNav activa={vista} onCambiar={setVista} isAdmin={isAdmin} />
           </>
         )}

@@ -10,22 +10,44 @@ import { sincronizarFila } from '../lib/sheetsSync'
 // paso el club puede corregir la categoría si el padre se equivocó.
 
 type Categoria = { id: string; nombre: string }
+type Club = { id: string; nombre: string; logo_url: string | null }
+
+// Slug por defecto para no romper links de registro ya compartidos antes
+// de que existiera el parámetro ?club=... (todos apuntaban a La Hermandad).
+const SLUG_POR_DEFECTO = 'la-hermandad'
 
 export default function RegistroPublico() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [club, setClub] = useState<Club | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const slug = new URLSearchParams(window.location.search).get('club') || SLUG_POR_DEFECTO
+
   useEffect(() => {
     if (!supabase) return
     supabase
+      .from('clubes')
+      .select('id, nombre, logo_url')
+      .eq('slug', slug)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setClub(data)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!supabase || !club) return
+    supabase
       .from('categorias')
       .select('id, nombre')
+      .eq('club_id', club.id)
       .then(({ data }) => {
         if (data) setCategorias(data)
       })
-  }, [])
+  }, [club])
 
   async function enviarSolicitud(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -34,11 +56,16 @@ export default function RegistroPublico() {
       setError('La app no está conectada a una base de datos todavía.')
       return
     }
+    if (!club) {
+      setError('No se pudo identificar el club de este link. Pide al club que te confirme el enlace correcto.')
+      return
+    }
     const form = e.currentTarget
     const fd = new FormData(form)
     const id = crypto.randomUUID()
     const payload = {
       id,
+      club_id: club.id,
       nombre: fd.get('nombre') as string,
       posicion: (fd.get('posicion') as string) || null,
       categoria_id: (fd.get('categoria_id') as string) || null,
@@ -70,10 +97,11 @@ export default function RegistroPublico() {
   if (enviado) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[420px] px-6 text-center gap-3">
-        <img src="/logo.png" alt="La Hermandad F.C." className="w-16 h-16 rounded-full bg-white object-cover" />
+        <img src={club?.logo_url || '/logo.png'} alt={club?.nombre ?? ''} className="w-16 h-16 rounded-full bg-white object-cover" />
         <p className="text-base font-medium">¡Solicitud recibida!</p>
         <p className="text-sm text-gray-500">
-          El club va a revisar los datos y te contactaremos al correo que dejaste para confirmar la inscripción.
+          {club?.nombre ?? 'El club'} va a revisar los datos y te contactaremos al correo que dejaste para confirmar
+          la inscripción.
         </p>
       </div>
     )
@@ -82,10 +110,11 @@ export default function RegistroPublico() {
   return (
     <div className="px-5 py-4">
       <div className="flex flex-col items-center text-center gap-2 mb-4">
-        <img src="/logo.png" alt="La Hermandad F.C." className="w-14 h-14 rounded-full bg-white object-cover" />
+        <img src={club?.logo_url || '/logo.png'} alt={club?.nombre ?? ''} className="w-14 h-14 rounded-full bg-white object-cover" />
         <p className="text-base font-medium">Registro de jugador</p>
         <p className="text-xs text-gray-500">
-          Llena los datos de tu hijo/a. El club revisa cada solicitud antes de activarla.
+          {club ? `Llena los datos de tu hijo/a para ${club.nombre}.` : 'Llena los datos de tu hijo/a.'} El club
+          revisa cada solicitud antes de activarla.
         </p>
       </div>
 

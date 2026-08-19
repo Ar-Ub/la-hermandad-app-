@@ -21,6 +21,7 @@ export type SolicitudRegistro = {
   seguro_medico: string | null
   estado: string
   created_at: string
+  club_id: string
 }
 
 type Categoria = { id: string; nombre: string }
@@ -28,13 +29,14 @@ type Categoria = { id: string; nombre: string }
 type Props = {
   solicitudes: SolicitudRegistro[]
   categorias: Categoria[]
+  clubSlug?: string | null
   onRecargar: () => void
   avisar: (texto: string) => void
 }
 
-export default function AdminSolicitudes({ solicitudes, categorias, onRecargar, avisar }: Props) {
+export default function AdminSolicitudes({ solicitudes, categorias, clubSlug, onRecargar, avisar }: Props) {
   const [copiado, setCopiado] = useState(false)
-  const link = `${window.location.origin}/?registro=1`
+  const link = `${window.location.origin}/?registro=1${clubSlug ? `&club=${clubSlug}` : ''}`
   const categoriaPorId = new Map(categorias.map((c) => [c.id, c.nombre]))
 
   const pendientes = solicitudes.filter((s) => s.estado === 'pendiente')
@@ -58,6 +60,7 @@ export default function AdminSolicitudes({ solicitudes, categorias, onRecargar, 
         familia_email: s.familia_email,
         fecha_nacimiento: s.fecha_nacimiento,
         foto_url: s.foto_url,
+        club_id: s.club_id,
         asistencia_pct: 0,
         partidos_jugados: 0,
         responsable_nombre: s.responsable_nombre,
