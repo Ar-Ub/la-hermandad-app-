@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, supabaseConfigured } from '../lib/supabaseClient'
 import { sincronizarFila } from '../lib/sheetsSync'
+import { CLUB_SLUG_DEPLOYMENT } from '../lib/clubConfig'
 
 // Formulario público de registro: el link se comparte con los padres
 // (ver Admin > Solicitudes) y NO requiere cuenta ni login. Lo que llenan
@@ -12,9 +13,11 @@ import { sincronizarFila } from '../lib/sheetsSync'
 type Categoria = { id: string; nombre: string }
 type Club = { id: string; nombre: string; logo_url: string | null }
 
-// Slug por defecto para no romper links de registro ya compartidos antes
-// de que existiera el parámetro ?club=... (todos apuntaban a La Hermandad).
-const SLUG_POR_DEFECTO = 'la-hermandad'
+// Slug por defecto si el link no trae "?club=...". Si este despliegue es
+// el propio de un club (VITE_CLUB_SLUG configurado en Cloudflare), usa ese;
+// si no, cae en "la-hermandad" para no romper links ya compartidos antes
+// de que existiera el parámetro ?club=.
+const SLUG_POR_DEFECTO = CLUB_SLUG_DEPLOYMENT || 'la-hermandad'
 
 export default function RegistroPublico() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -208,9 +211,9 @@ export default function RegistroPublico() {
         <label className="flex items-start gap-2 mt-2 text-xs text-gray-600">
           <input type="checkbox" name="consentimiento" required className="mt-0.5 shrink-0" />
           <span>
-            Autorizo a La Hermandad F.C. a guardar estos datos (incluyendo información médica) para gestionar la
-            participación de mi hijo/a en el club, y entiendo que puedo pedir que se corrijan o eliminen en
-            cualquier momento contactando al club.
+            Autorizo a {club?.nombre ?? 'el club'} a guardar estos datos (incluyendo información médica) para
+            gestionar la participación de mi hijo/a en el club, y entiendo que puedo pedir que se corrijan o
+            eliminen en cualquier momento contactando al club.
           </span>
         </label>
 

@@ -167,9 +167,43 @@ Hermandad:
   plataforma, **Ciclo Asiste**; después de loguearte, el Header muestra
   el club real (La Hermandad F.C. hoy). Pendiente dentro de esta misma
   fase: colores por club (la columna `color_primario` ya existe pero
-  todavía no se usa en la interfaz), un logo real para Ciclo Asiste (hoy
-  es solo texto), y una forma de dar de alta un club nuevo sin tocar
-  código.
+  todavía no se usa en la interfaz), y una forma de dar de alta un club
+  nuevo sin tocar código.
+
+### Un club nuevo, gratis, sin dominio propio
+
+No hace falta comprar un dominio para vender la app a un segundo club.
+Cloudflare da subdominios `*.workers.dev` gratis e ilimitados, uno por
+cada proyecto de Workers que crees en tu cuenta — no solo el primero.
+
+Para dar de alta un club nuevo:
+
+1. En Supabase, inserta su fila en `clubes` (nombre, `slug`, logo si
+   tiene) y su admin en `administradores`, igual que hoy.
+2. En Cloudflare, crea un **proyecto de Workers nuevo** (gratis) conectado
+   al mismo repositorio de GitHub. Cada proyecto tiene su propio nombre y
+   por lo tanto su propia URL: `nombre-que-elijas.tu-subdominio.workers.dev`.
+3. En ese proyecto agrega las variables de entorno de siempre
+   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, y las de Sheets si
+   aplica) más una nueva: `VITE_CLUB_SLUG=el-slug-del-club`. Esto hace que
+   la pantalla de antes de loguearse muestre la marca de ese club en vez
+   de la genérica de Ciclo Asiste, y que el link de registro público de
+   ese proyecto no necesite llevar `?club=slug` en la URL.
+4. Comparte la URL de ese proyecto con el club — es 100% independiente en
+   apariencia, aunque comparte el mismo código y la misma base de datos
+   (separados por `club_id` gracias a las Fases 1 y 2).
+
+Además, el nombre que aparece después del nombre del proyecto en la URL
+(ej. `ubannar90` en `la-hermandad-app.ubannar90.workers.dev`) es el
+subdominio de tu cuenta de Cloudflare, no de este proyecto en particular.
+Se puede cambiar una vez, gratis, desde **Workers & Pages > Your
+subdomain > Change** en el dashboard de Cloudflare — aplica a todos tus
+proyectos a la vez, así que cualquier link ya compartido con el nombre
+viejo hay que reenviarlo.
+
+Comprar un dominio propio (ej. `cicloasiste.com`, ~US$12-15/año) sigue
+siendo la opción más profesional a futuro, pero no es necesario para
+lanzar ni para dar de alta el segundo, tercer o cuarto club.
 
 ## 3. Respaldo automático en Google Sheets (gratis)
 

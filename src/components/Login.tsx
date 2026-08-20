@@ -3,12 +3,16 @@ import { supabase, supabaseConfigured } from '../lib/supabaseClient'
 
 type Props = {
   onDemoLogin: () => void
+  clubNombre?: string | null
+  logoUrl?: string | null
 }
 
-export default function Login({ onDemoLogin }: Props) {
+export default function Login({ onDemoLogin, clubNombre, logoUrl }: Props) {
   const [email, setEmail] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const nombre = clubNombre || 'Ciclo Asiste'
+  const logo = logoUrl || '/ciclo-asiste-logo.svg'
 
   async function enviarEnlace(e: React.FormEvent) {
     e.preventDefault()
@@ -20,15 +24,16 @@ export default function Login({ onDemoLogin }: Props) {
   }
 
   // Antes de loguearse no sabemos todavía a qué club pertenece quien
-  // visita (eso se resuelve después, por su correo) — así que esta
-  // pantalla muestra la marca de la plataforma, no la de un club
-  // específico. Una vez adentro, el Header sí muestra el club real.
+  // visita (eso se resuelve después, por su correo) — a menos que este
+  // despliegue sea el propio de un club (VITE_CLUB_SLUG), en cuyo caso el
+  // padre/madre recibe clubNombre/logoUrl y ve la marca de su club desde
+  // ya. Si no, se muestra la marca genérica de la plataforma.
   return (
     <div className="flex flex-col items-center justify-center min-h-[420px] px-6 text-center gap-4">
-      <img src="/ciclo-asiste-logo.svg" alt="Ciclo Asiste" className="w-16 h-16 rounded-full" />
+      <img src={logo} alt={nombre} className="w-16 h-16 rounded-full" />
       <div>
-        <p className="text-base font-medium">Ciclo Asiste</p>
-        <p className="text-sm text-gray-500">Portal de familias y jugadores de tu club</p>
+        <p className="text-base font-medium">{nombre}</p>
+        <p className="text-sm text-gray-500">Portal de familias y jugadores{clubNombre ? '' : ' de tu club'}</p>
       </div>
 
       {!supabaseConfigured && (

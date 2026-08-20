@@ -9,6 +9,7 @@ import Perfil from './views/Perfil'
 import Admin from './views/Admin'
 import { supabase, supabaseConfigured } from './lib/supabaseClient'
 import { useJugadoresFamilia } from './lib/useJugadoresFamilia'
+import { CLUB_SLUG_DEPLOYMENT } from './lib/clubConfig'
 
 export default function App() {
   const [vista, setVista] = useState<Vista>('calendario')
@@ -16,6 +17,22 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [clubSlug, setClubSlug] = useState<string | null>(null)
   const [clubAdmin, setClubAdmin] = useState<{ nombre: string; logo_url: string | null } | null>(null)
+  const [clubPreLogin, setClubPreLogin] = useState<{ nombre: string; logo_url: string | null } | null>(null)
+
+  // Si este despliegue es el propio de un club (VITE_CLUB_SLUG en
+  // Cloudflare), muestra su marca desde antes de loguearse. Si no está
+  // configurado, se queda con la marca genérica de Ciclo Asiste.
+  useEffect(() => {
+    if (!supabase || !CLUB_SLUG_DEPLOYMENT) return
+    supabase
+      .from('clubes')
+      .select('nombre, logo_url')
+      .eq('slug', CLUB_SLUG_DEPLOYMENT)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setClubPreLogin(data)
+      })
+  }, [])
 
   useEffect(() => {
     if (!supabase) return
@@ -70,8 +87,13 @@ export default function App() {
       <div className="w-full max-w-[380px] bg-white rounded-[28px] shadow-xl overflow-hidden border border-gray-200">
         {!dentro ? (
           <>
-            <Header categoria="Portal de familias" nombreUsuario="" nombreClub="Ciclo Asiste" logoUrl="/ciclo-asiste-logo.svg" />
-            <Login onDemoLogin={() => setAutenticado(true)} />
+            <Header
+              categoria="Portal de familias"
+              nombreUsuario=""
+              nombreClub={clubPreLogin?.nombre ?? 'Ciclo Asiste'}
+              logoUrl={clubPreLogin?.logo_url ?? '/ciclo-asiste-logo.svg'}
+            />
+            <Login onDemoLogin={() => setAutenticado(true)} clubNombre={clubPreLogin?.nombre} logoUrl={clubPreLogin?.logo_url} />
           </>
         ) : (
           <>
